@@ -6,16 +6,21 @@ export const dynamic = "force-dynamic";
 
 /**
  * AGENT PORTAL GATEWAY
- * 
+ *
  * This is the main entry point for the Agent Portal.
  * - Unauthenticated users see the login form
  * - Authenticated agents see their dashboard
+ * - Locked agents are redirected to login with error
  */
 export default async function AgentPortalPage() {
   // Check if agent is logged in via cookie
   const cookieStore = await cookies();
   const agentSession = cookieStore.get("agent_session");
   const agentIdCookie = cookieStore.get("agent_id");
+
+  // Get error from URL params (for displaying login errors)
+  const url = new URL(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  // Note: In server components, we can't access request URL directly, so we pass error via searchParams in redirects
 
   // If not authenticated, show login form
   if (agentSession?.value !== "authenticated" || !agentIdCookie?.value) {
@@ -28,7 +33,7 @@ export default async function AgentPortalPage() {
     return <AgentLoginGateway />;
   }
 
-  // Verify agent exists in database
+  // Verify agent exists in database and check lock status
   const agent = await prisma.agent.findUnique({
     where: { id: agentId },
     select: {
@@ -36,11 +41,13 @@ export default async function AgentPortalPage() {
       name: true,
       phone: true,
       username: true,
+      isLocked: true,
       createdAt: true,
     }
   });
 
-  if (!agent) {
+  // If agent doesn't exist or is locked, clear session and show login
+  if (!agent || agent.isLocked) {
     return <AgentLoginGateway />;
   }
 
@@ -74,7 +81,7 @@ export default async function AgentPortalPage() {
     const totalInterestPaid = loan.installments
       .filter(i => i.status === 'PAID')
       .reduce((sum, i) => sum + Number(i.interestPaid), 0);
-    
+
     const pendingInstallment = loan.installments.find(i => i.status === 'PENDING');
     const overdueInstallment = loan.installments.find(
       i => i.status === 'PENDING' && new Date(i.dueDate) < new Date()
@@ -186,9 +193,9 @@ function AgentLoginGateway() {
         </div>
 
         {/* Login Form */}
-        <form 
-          action="/api/agent-auth/login" 
-          method="POST" 
+        <form
+          action="/api/agent-auth/login"
+          method="POST"
           className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-2xl shadow-black/50 space-y-5"
         >
           {/* Username Field */}

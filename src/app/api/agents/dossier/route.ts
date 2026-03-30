@@ -111,6 +111,10 @@ export async function GET(request: NextRequest) {
       phone: agent.phone,
       createdAt: agent.createdAt.toISOString(),
       portfolio: agent.portfolio,
+      // Authentication fields
+      username: agent.username,
+      pin: agent.pin,
+      isLocked: agent.isLocked,
       // Commission stats
       totalLifetimeEarnings,
       pendingPayout,

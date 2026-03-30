@@ -11,6 +11,9 @@ interface Agent {
   totalExposure: number;
   pendingCommission: number;
   commissionsCount: number;
+  username?: string | null;
+  pin?: string | null;
+  isLocked?: boolean;
 }
 
 interface AgentDossier {
@@ -19,6 +22,9 @@ interface AgentDossier {
   phone: string;
   createdAt: string;
   portfolio: string;
+  username?: string | null;
+  pin?: string | null;
+  isLocked?: boolean;
   totalLifetimeEarnings: number;
   pendingPayout: number;
   commissionsCount: number;
@@ -48,10 +54,10 @@ const formatCurrency = (value: number) => {
 
 const formatDate = (dateStr: string | null) => {
   if (!dateStr) return "N/A";
-  return new Date(dateStr).toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric', 
-    year: 'numeric' 
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
   });
 };
 
@@ -59,19 +65,24 @@ export default function AgentCommandCenter() {
   const [data, setData] = useState<AgentsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Selected agent for dossier
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
   const [dossier, setDossier] = useState<AgentDossier | null>(null);
   const [loadingDossier, setLoadingDossier] = useState(false);
-  
+
   // Form state
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  
+
   // Payout state
   const [settlingAgentId, setSettlingAgentId] = useState<number | null>(null);
+
+  // Credentials state
+  const [generatingCredentials, setGeneratingCredentials] = useState(false);
+  const [togglingLock, setTogglingLock] = useState(false);
+  const [showCredentials, setShowCredentials] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -121,7 +132,7 @@ export default function AgentCommandCenter() {
   const handleCreateAgent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
-    
+
     setSubmitting(true);
     try {
       const res = await fetch('/api/agents', {
@@ -129,7 +140,7 @@ export default function AgentCommandCenter() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName, phone: newPhone })
       });
-      
+
       if (res.ok) {
         setNewName("");
         setNewPhone("");
@@ -147,7 +158,7 @@ export default function AgentCommandCenter() {
 
   const handleSettlePayout = async (agentId: number) => {
     if (!confirm("Settle and payout all pending commissions for this agent?")) return;
-    
+
     setSettlingAgentId(agentId);
     try {
       const res = await fetch('/api/agents/settle', {
@@ -155,7 +166,7 @@ export default function AgentCommandCenter() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ agentId })
       });
-      
+
       const json = await res.json();
       if (json.success) {
         alert(`Settled ${json.settledCount} commissions. Total payout: ${formatCurrency(json.totalPayout)}`);
@@ -170,6 +181,59 @@ export default function AgentCommandCenter() {
       alert(e.message);
     } finally {
       setSettlingAgentId(null);
+    }
+  };
+
+  const handleGenerateCredentials = async (agentId: number) => {
+    if (!confirm("Generate new login credentials for this agent? This will overwrite any existing credentials.")) return;
+
+    setGeneratingCredentials(true);
+    try {
+      const res = await fetch('/api/agents/credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId })
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        alert(`Credentials generated!\n\nUsername: ${json.agent.username}\nPIN: ${json.agent.pin}\n\nPlease share these credentials securely with the agent.`);
+        fetchDossier(agentId);
+        fetchData();
+      } else {
+        alert(json.error || "Failed to generate credentials");
+      }
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setGeneratingCredentials(false);
+    }
+  };
+
+  const handleToggleLock = async (agentId: number, currentLockStatus: boolean) => {
+    const action = currentLockStatus ? "unlock" : "lock";
+    if (!confirm(`Are you sure you want to ${action} this agent?`)) return;
+
+    setTogglingLock(true);
+    try {
+      const res = await fetch('/api/agents/lock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId, isLocked: !currentLockStatus })
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        alert(`Agent ${action}ed successfully!`);
+        fetchDossier(agentId);
+        fetchData();
+      } else {
+        alert(json.error || `Failed to ${action} agent`);
+      }
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setTogglingLock(false);
     }
   };
 
@@ -232,6 +296,80 @@ export default function AgentCommandCenter() {
           </div>
         ) : dossier ? (
           <div className="space-y-6">
+            {/* Card 0: Authentication & Access Control */}
+            <div className={`bg-zinc-900 border rounded-2xl p-6 shadow-xl ${dossier.isLocked ? 'border-rose-500/50' : 'border-zinc-800'}`}>
+              <h2 className="text-sm font-bold text-purple-400 uppercase tracking-wider mb-4">🔐 Authentication & Access Control</h2>
+
+              {dossier.isLocked && (
+                <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">🔒</span>
+                    <div>
+                      <p className="text-rose-400 font-bold">ACCOUNT LOCKED</p>
+                      <p className="text-xs text-rose-300">This agent cannot access the portal</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {dossier.username ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-zinc-800 rounded-xl p-4">
+                      <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Username</p>
+                      <p className="text-lg font-mono font-bold text-emerald-400">{dossier.username}</p>
+                    </div>
+                    <div className="bg-zinc-800 rounded-xl p-4">
+                      <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">PIN</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-lg font-mono font-bold text-emerald-400">
+                          {showCredentials ? dossier.pin : '••••••'}
+                        </p>
+                        <button
+                          onClick={() => setShowCredentials(!showCredentials)}
+                          className="text-zinc-400 hover:text-white text-sm"
+                        >
+                          {showCredentials ? '🙈' : '👁️'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleGenerateCredentials(dossier.id)}
+                      disabled={generatingCredentials}
+                      className="flex-1 py-3 rounded-xl font-bold uppercase tracking-wider transition-all bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50"
+                    >
+                      {generatingCredentials ? "Regenerating..." : "🔄 Regenerate Credentials"}
+                    </button>
+                    <button
+                      onClick={() => handleToggleLock(dossier.id, dossier.isLocked || false)}
+                      disabled={togglingLock}
+                      className={`flex-1 py-3 rounded-xl font-bold uppercase tracking-wider transition-all ${
+                        dossier.isLocked
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                          : 'bg-rose-600 hover:bg-rose-500 text-white'
+                      } disabled:opacity-50`}
+                    >
+                      {togglingLock ? "Processing..." : dossier.isLocked ? "🔓 Unlock Agent" : "🔒 Lock Agent"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-zinc-500 mb-4">No credentials generated yet</p>
+                  <button
+                    onClick={() => handleGenerateCredentials(dossier.id)}
+                    disabled={generatingCredentials}
+                    className="px-6 py-3 rounded-xl font-bold uppercase tracking-wider transition-all bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white disabled:opacity-50"
+                  >
+                    {generatingCredentials ? "Generating..." : "🔑 Generate Login Credentials"}
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Card 1: Agent Identity & Risk Profile */}
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
               <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-4">Card 1: Agent Identity</h2>
@@ -275,10 +413,10 @@ export default function AgentCommandCenter() {
                     : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
                 }`}
               >
-                {settlingAgentId === dossier.id 
-                  ? "Processing..." 
-                  : dossier.pendingPayout > 0 
-                    ? `Settle Payout - ${formatCurrency(dossier.pendingPayout)}` 
+                {settlingAgentId === dossier.id
+                  ? "Processing..."
+                  : dossier.pendingPayout > 0
+                    ? `Settle Payout - ${formatCurrency(dossier.pendingPayout)}`
                     : "No Pending Payout"
                 }
               </button>
@@ -309,7 +447,7 @@ export default function AgentCommandCenter() {
             {/* Card 4: Active Client Roster */}
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
               <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-4">Card 4: Active Client Roster</h2>
-              
+
               {dossier.activeClients.length === 0 ? (
                 <div className="text-center py-8 text-zinc-500">
                   No active clients for this agent

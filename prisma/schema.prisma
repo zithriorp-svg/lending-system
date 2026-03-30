@@ -19,6 +19,10 @@ model Agent {
   name        String
   phone       String
   portfolio   String           @default("Main Portfolio")
+  // Authentication fields
+  username    String?          @unique
+  pin         String?          // 6-digit PIN for agent portal login
+  isLocked    Boolean          @default(false) // Lockout toggle for admin control
   loans       Loan[]
   commissions AgentCommission[]
   createdAt   DateTime         @default(now())

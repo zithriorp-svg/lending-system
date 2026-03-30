@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 /**
  * AGENT PORTAL LOGIN
  * Validates username and PIN against Agent table
+ * Blocks access if agent is locked
  */
 export async function POST(req: Request) {
   const formData = await req.formData();
@@ -28,14 +29,24 @@ export async function POST(req: Request) {
       where: { username }
     });
 
-    // Validate agent exists and PIN matches
-    if (!agent || agent.pin !== pin) {
+    // Validate agent exists
+    if (!agent) {
+      return NextResponse.redirect(new URL("/agent-portal?error=invalid", req.url));
+    }
+
+    // Check if agent is locked
+    if (agent.isLocked) {
+      return NextResponse.redirect(new URL("/agent-portal?error=locked", req.url));
+    }
+
+    // Validate PIN matches
+    if (agent.pin !== pin) {
       return NextResponse.redirect(new URL("/agent-portal?error=invalid", req.url));
     }
 
     // Set session cookies
     const cookieStore = await cookies();
-    
+
     cookieStore.set("agent_session", "authenticated", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -43,7 +54,7 @@ export async function POST(req: Request) {
       path: "/",
       sameSite: "lax"
     });
-    
+
     cookieStore.set("agent_id", agent.id.toString(), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -51,7 +62,7 @@ export async function POST(req: Request) {
       path: "/",
       sameSite: "lax"
     });
-    
+
     cookieStore.set("agent_name", agent.name, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
