@@ -57,7 +57,14 @@ export default async function ClientProfilePage({ params }: PageProps) {
             installments: {
               orderBy: { period: 'asc' }
             },
-            agent: true
+            agent: {
+              select: {
+                id: true,
+                name: true,
+                phone: true,
+                portfolio: true
+              }
+            }
           },
           orderBy: { createdAt: 'desc' }
         }

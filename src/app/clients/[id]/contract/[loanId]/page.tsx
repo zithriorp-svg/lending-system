@@ -66,7 +66,14 @@ export default async function ContractPage({
         installments: {
           orderBy: { period: 'asc' }
         },
-        agent: true
+        agent: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            portfolio: true
+          }
+        }
       }
     });
 

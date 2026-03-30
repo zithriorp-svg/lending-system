@@ -20,7 +20,14 @@ export async function POST(request: NextRequest) {
         isPaidOut: false
       },
       include: {
-        agent: true
+        agent: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            portfolio: true
+          }
+        }
       }
     });
 

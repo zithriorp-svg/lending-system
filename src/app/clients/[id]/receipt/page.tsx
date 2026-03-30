@@ -56,7 +56,14 @@ export default async function ReceiptPage({ params }: PageProps) {
         orderBy: { createdAt: 'desc' },
         take: 1,
         include: {
-          agent: true
+          agent: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              portfolio: true
+            }
+          }
         }
       }
     }
