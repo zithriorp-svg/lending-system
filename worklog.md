@@ -335,3 +335,24 @@ Stage Summary:
 - ✅ Click handlers simplified and robust
 - ✅ Button properly triggers modal open
 - ✅ Pushed to master: https://github.com/zithriorp-svg/lending-system
+
+---
+Task ID: 13
+Agent: Main Agent
+Task: Brute-force fix Prisma Agent.username crash and hardwire Scan to Apply button
+
+Work Log:
+- Comprehensive search for all `username` references in src/ directory
+- Verified no `username` references exist in Prisma queries for Agent model
+- All Agent queries use `agent: true` or `agent.name` - correct
+- Created new QuickActionsGrid client component with embedded modal
+- Replaced inline Quick Actions HTML with new component
+- Button now has explicit onClick handler that embedded modal with ID-based toggle
+- Removed dependency on CopyApplicationLink component (still available but unused)
+- Committed and pushed to master branch
+
+Stage Summary:
+- ✅ No Agent.username references found in Prisma queries
+- ✅ QuickActionsGrid client component created with working modal
+- ✅ All buttons have cursor-pointer and explicit onClick handlers
+- ✅ Pushed to master: https://github.com/zithriorp-svg/lending-system
