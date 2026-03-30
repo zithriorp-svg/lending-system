@@ -48,7 +48,9 @@ export default function QuickActionsGrid({ isAdmin, portfolios }: QuickActionsGr
         </Link>
         
         {/* Copy Apply Links - Dedicated client trigger component */}
-        <ApplyLinksTrigger portfolios={portfolios} />
+        <div className="bg-zinc-800 hover:bg-zinc-700 rounded-xl border border-zinc-700 transition-all overflow-hidden">
+          <ApplyLinksTrigger portfolios={portfolios} />
+        </div>
         
         <Link 
           href="/payments" 
