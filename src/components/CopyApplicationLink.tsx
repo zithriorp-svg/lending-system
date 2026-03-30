@@ -48,11 +48,16 @@ export default function CopyApplicationLink({ portfolios }: CopyApplicationLinkP
     <>
       {/* Trigger Button */}
       <button
-        onClick={() => setIsOpen(true)}
-        className="flex flex-col items-center justify-center p-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl border border-zinc-700 transition-all font-bold text-white tracking-wide w-full"
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsOpen(true);
+        }}
+        className="flex flex-col items-center justify-center p-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl border border-zinc-700 transition-all font-bold text-white tracking-wide w-full cursor-pointer"
       >
         <span className="text-2xl mb-1">📱</span>
-        <span>Application Links</span>
+        <span>Scan to Apply</span>
       </button>
 
       {/* Modal Overlay */}
