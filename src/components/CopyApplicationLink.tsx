@@ -44,16 +44,20 @@ export default function CopyApplicationLink({ portfolios }: CopyApplicationLinkP
     }
   };
 
+  const handleOpenModal = () => {
+    setIsOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsOpen(false);
+  };
+
   return (
     <>
       {/* Trigger Button */}
       <button
         type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setIsOpen(true);
-        }}
+        onClick={handleOpenModal}
         className="flex flex-col items-center justify-center p-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl border border-zinc-700 transition-all font-bold text-white tracking-wide w-full cursor-pointer"
       >
         <span className="text-2xl mb-1">📱</span>
@@ -64,7 +68,7 @@ export default function CopyApplicationLink({ portfolios }: CopyApplicationLinkP
       {isOpen && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-          onClick={() => setIsOpen(false)}
+          onClick={handleCloseModal}
         >
           {/* Modal Content */}
           <div 
@@ -73,7 +77,7 @@ export default function CopyApplicationLink({ portfolios }: CopyApplicationLinkP
           >
             {/* Close Button */}
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={handleCloseModal}
               className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors"
               aria-label="Close modal"
             >

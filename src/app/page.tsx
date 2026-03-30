@@ -22,10 +22,16 @@ export default async function Dashboard() {
   const portfolio = await getActivePortfolio();
 
   // Fetch all portfolios for the application link generator
-  const portfolios = await prisma.systemPortfolio.findMany({
+  const portfolioRecords = await prisma.systemPortfolio.findMany({
     select: { id: true, name: true },
     orderBy: { createdAt: 'asc' }
   });
+  
+  // Serialize portfolios for client component
+  const portfolios = portfolioRecords.map(p => ({
+    id: p.id,
+    name: p.name
+  }));
 
   const ledgers = await prisma.ledger.findMany({ 
     where: { portfolio },
