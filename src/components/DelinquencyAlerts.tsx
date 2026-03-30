@@ -16,6 +16,7 @@ interface OverdueAlert {
   phone: string;
   agentName: string | null;
   daysLate: number;
+  penaltyFee: number; // Dynamic penalty from installment
 }
 
 interface DueTodayAlert {
@@ -29,6 +30,7 @@ interface DueTodayAlert {
   firstName: string;
   phone: string;
   agentName: string | null;
+  penaltyFee: number; // Dynamic penalty from installment
 }
 
 interface UpcomingAlert {
@@ -83,8 +85,25 @@ const generateDueTodayMessage = (firstName: string, amount: number, period: numb
   return message;
 };
 
-const generateOverdueMessage = (firstName: string, amount: number, daysLate: number, agentName: string | null): string => {
+/**
+ * Generate OVERDUE message with DYNAMIC penalty fee
+ * IMPORTANT: penaltyFee is passed dynamically from installment.penaltyFee
+ * NOT hardcoded to 500
+ */
+const generateOverdueMessage = (
+  firstName: string, 
+  amount: number, 
+  daysLate: number, 
+  agentName: string | null,
+  penaltyFee: number = 0 // DYNAMIC - from installment.penaltyFee
+): string => {
   let message = `URGENT: ${firstName}, your FinTech Vault payment of ${formatCurrency(amount)} is currently ${daysLate} DAYS OVERDUE. Immediate payment is required to prevent penalties. Please contact your agent immediately.`;
+  
+  // Only show penalty info if there's an actual penalty applied
+  if (penaltyFee > 0) {
+    message += `\n\n⚠️ A late penalty of ${formatCurrency(penaltyFee)} has been applied to your account.`;
+  }
+  
   if (agentName) {
     message += ` (Assigned Officer: ${agentName})`;
   }
@@ -106,7 +125,8 @@ function CommunicationButtons({
   period,
   daysLate,
   agentName,
-  isOverdue
+  isOverdue,
+  penaltyFee // Dynamic penalty from installment
 }: {
   phone: string;
   firstName: string;
@@ -115,10 +135,12 @@ function CommunicationButtons({
   daysLate?: number;
   agentName: string | null;
   isOverdue: boolean;
+  penaltyFee?: number; // Dynamic penalty from installment
 }) {
   const formattedPhone = formatPhone(phone);
+  // Use dynamic penalty fee for overdue messages (NOT hardcoded 500)
   const message = isOverdue
-    ? generateOverdueMessage(firstName, amount, daysLate || 0, agentName)
+    ? generateOverdueMessage(firstName, amount, daysLate || 0, agentName, penaltyFee || 0)
     : generateDueTodayMessage(firstName, amount, period, agentName);
   const encodedMessage = encodeURIComponent(message);
 
@@ -306,6 +328,7 @@ export default function DelinquencyAlerts({ overdue, dueToday, upcoming }: Delin
                       daysLate={item.daysLate}
                       agentName={item.agentName}
                       isOverdue={true}
+                      penaltyFee={item.penaltyFee} // Dynamic penalty from installment
                     />
                     {/* ENFORCEMENT: Penalty Button */}
                     <PenaltyButton
@@ -374,6 +397,7 @@ export default function DelinquencyAlerts({ overdue, dueToday, upcoming }: Delin
                       period={item.period}
                       agentName={item.agentName}
                       isOverdue={false}
+                      penaltyFee={item.penaltyFee} // Dynamic penalty from installment
                     />
                     <Link
                       href={`/payments?clientId=${item.clientId}`}

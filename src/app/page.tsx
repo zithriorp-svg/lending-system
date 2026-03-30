@@ -254,6 +254,7 @@ export default async function Dashboard() {
   };
 
   // Serialize for client component - include phone, firstName, agentName, clientId for Click-to-Collect and Deep-Linking
+  // Also include penaltyFee for dynamic notification templates
   const overdueAlerts = overdueInstallments.map(i => ({
     id: i.id,
     loanId: i.loanId,
@@ -265,7 +266,8 @@ export default async function Dashboard() {
     firstName: i.loan.client.firstName,
     phone: i.loan.client.phone || '',
     agentName: i.loan.agent?.name || null,
-    daysLate: getDaysLate(i.dueDate)
+    daysLate: getDaysLate(i.dueDate),
+    penaltyFee: Number(i.penaltyFee) || 0 // Dynamic penalty from installment
   }));
 
   const dueTodayAlerts = dueTodayInstallments.map(i => ({
@@ -278,7 +280,8 @@ export default async function Dashboard() {
     clientName: `${i.loan.client.firstName} ${i.loan.client.lastName}`,
     firstName: i.loan.client.firstName,
     phone: i.loan.client.phone || '',
-    agentName: i.loan.agent?.name || null
+    agentName: i.loan.agent?.name || null,
+    penaltyFee: Number(i.penaltyFee) || 0 // Dynamic penalty from installment
   }));
 
   const upcomingAlerts = upcomingInstallments.map(i => ({
