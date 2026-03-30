@@ -77,9 +77,19 @@ async function calculateTrustScore(clientId: number): Promise<number> {
 }
 
 export async function submitApplicationRecord(data: any) {
-  // PRIORITY: Use targetPortfolio from URL param (passed via form data) for orphaned applications
+  // PRIORITY: Use targetPortfolioId (preferred) or targetPortfolio from URL param
   // Falls back to cookie for agent-initiated applications, then to default
-  const portfolio = data.targetPortfolio || await getActivePortfolio();
+  let portfolio: string;
+  
+  if (data.targetPortfolioId) {
+    // Fetch portfolio name by ID
+    const portfolioRecord = await prisma.systemPortfolio.findUnique({
+      where: { id: parseInt(data.targetPortfolioId) }
+    });
+    portfolio = portfolioRecord?.name || data.targetPortfolio || await getActivePortfolio();
+  } else {
+    portfolio = data.targetPortfolio || await getActivePortfolio();
+  }
 
   let score = 5;
   let summary = "AI Analysis Pending";

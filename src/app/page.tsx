@@ -21,6 +21,12 @@ export default async function Dashboard() {
 
   const portfolio = await getActivePortfolio();
 
+  // Fetch all portfolios for the application link generator
+  const portfolios = await prisma.systemPortfolio.findMany({
+    select: { id: true, name: true },
+    orderBy: { createdAt: 'asc' }
+  });
+
   const ledgers = await prisma.ledger.findMany({ 
     where: { portfolio },
     orderBy: { createdAt: 'desc' },
@@ -364,7 +370,7 @@ export default async function Dashboard() {
             <span className="text-2xl mb-1">⊕</span>
             <span>New Application</span>
           </Link>
-          <CopyApplicationLink portfolio={portfolio} />
+          <CopyApplicationLink portfolios={portfolios} />
           <Link href="/payments" className="flex flex-col items-center justify-center p-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl border border-zinc-700 transition-all font-bold text-white tracking-wide">
             <span className="text-2xl mb-1">💵</span>
             <span>Process Payment</span>

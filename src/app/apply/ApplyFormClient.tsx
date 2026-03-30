@@ -10,13 +10,32 @@ interface Agent {
   name: string;
 }
 
-interface ApplyFormClientProps {
-  agents: Agent[];
+interface Portfolio {
+  id: number;
+  name: string;
 }
 
-export default function ApplyFormClient({ agents }: ApplyFormClientProps) {
+interface ApplyFormClientProps {
+  agents: Agent[];
+  portfolios: Portfolio[];
+}
+
+export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientProps) {
   const searchParams = useSearchParams();
-  const urlPortfolio = searchParams.get('portfolio') || 'Main Portfolio';
+  
+  // Read portfolioId from URL (preferred) or fall back to portfolio name
+  const urlPortfolioId = searchParams.get('portfolioId');
+  const urlPortfolioName = searchParams.get('portfolio');
+  
+  // Determine the target portfolio
+  const targetPortfolio = urlPortfolioId 
+    ? portfolios.find(p => p.id === parseInt(urlPortfolioId))
+    : urlPortfolioName 
+      ? portfolios.find(p => p.name === urlPortfolioName) || portfolios[0]
+      : portfolios[0];
+  
+  const targetPortfolioId = targetPortfolio?.id || null;
+  const targetPortfolioName = targetPortfolio?.name || "Main Portfolio";
   
   // Loan Configuration State
   const [principal, setPrincipal] = useState<number>(0);
@@ -167,10 +186,11 @@ export default function ApplyFormClient({ agents }: ApplyFormClientProps) {
     
     setStatus("UPLOADING FORENSIC DOSSIER...");
     try {
-      // Include targetPortfolio and loan configuration in the form data
+      // Include targetPortfolioId and loan configuration in the form data
       const res = await submitApplicationRecord({ 
         ...formData, 
-        targetPortfolio: urlPortfolio,
+        targetPortfolio: targetPortfolioName, // Keep for backward compatibility
+        targetPortfolioId: targetPortfolioId, // New: portfolio ID for precise routing
         // Loan Configuration - Sends effective 6% rate (Good Payer assumption)
         principal,
         termType,
@@ -210,8 +230,8 @@ export default function ApplyFormClient({ agents }: ApplyFormClientProps) {
         <div className="text-center mb-6 pt-4 print:hidden">
           <h1 className="text-3xl font-serif font-bold text-gray-200 mb-2">Digital Loan<br/>Application</h1>
           <p className="text-gray-500 text-xs tracking-widest font-bold">SECURE • FAST • ENCRYPTED</p>
-          {urlPortfolio !== 'Main Portfolio' && (
-            <p className="text-[#00df82] text-xs mt-2">Portfolio: {urlPortfolio}</p>
+          {targetPortfolioName !== 'Main Portfolio' && (
+            <p className="text-[#00df82] text-xs mt-2">Portfolio: {targetPortfolioName}</p>
           )}
         </div>
 
@@ -219,7 +239,7 @@ export default function ApplyFormClient({ agents }: ApplyFormClientProps) {
         <div className="hidden print:block mb-8 text-center border-b-2 border-black pb-6">
           <h1 className="text-2xl font-bold text-black mb-1">LOAN APPLICATION RECEIPT</h1>
           <p className="text-sm text-gray-600">Official Document • {currentDate}</p>
-          <p className="text-xs text-gray-500 mt-1">Portfolio: {urlPortfolio}</p>
+          <p className="text-xs text-gray-500 mt-1">Portfolio: {targetPortfolioName}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-7">

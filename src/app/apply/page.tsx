@@ -11,6 +11,12 @@ export default async function ApplyPage() {
     orderBy: { name: 'asc' }
   });
 
+  // Fetch all portfolios from the database
+  const portfolios = await prisma.systemPortfolio.findMany({
+    select: { id: true, name: true },
+    orderBy: { createdAt: 'asc' }
+  });
+
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-[#09090b] text-gray-300 p-4 font-sans flex items-center justify-center">
@@ -20,7 +26,7 @@ export default async function ApplyPage() {
         </div>
       </div>
     }>
-      <ApplyFormClient agents={agents} />
+      <ApplyFormClient agents={agents} portfolios={portfolios} />
     </Suspense>
   );
 }
