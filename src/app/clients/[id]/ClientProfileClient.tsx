@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DirectLoanCalculator from "@/components/DirectLoanCalculator";
 import CollectionLog from "@/components/CollectionLog";
+import { sendFBNotification, generateOverdueNotice, generatePaymentReminder, generatePaymentReceipt } from "@/utils/notifications";
 
 // Number formatting helper
 const formatCurrency = (value: number | string | undefined | null): string => {
@@ -36,6 +37,7 @@ interface Installment {
   penaltyFee: number;
   status: string;
   paymentDate: Date | null;
+  amountPaid?: number;
 }
 
 interface Loan {
@@ -53,7 +55,6 @@ interface Loan {
   status: string;
   installmentsCount: number;
   paidInstallments: number;
-  // P1A: P&L metrics
   totalInterestPaid: number;
   totalPenaltiesPaid: number;
   agentCommissions: number;
@@ -144,7 +145,77 @@ interface ClientData {
   kycData: KYCData | null;
 }
 
-// Risk Badge Component
+// ============================================================================
+// DOSSIER INTELLIGENT FB NOTIFY BUTTON
+// ============================================================================
+function DossierFBNotifyButton({ client, loan, inst }: { client: ClientData, loan: Loan, inst: Installment }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleNotify = () => {
+    let message = "";
+    const isOverdue = new Date(inst.dueDate) < new Date() && inst.status !== 'PAID';
+
+    if (inst.status === 'PAID') {
+      message = generatePaymentReceipt({
+        clientName: client.firstName,
+        amount: inst.amountPaid || inst.expectedAmount,
+        paymentDate: inst.paymentDate || new Date(),
+        periodNumber: inst.period,
+        loan: loan as any
+      });
+    } else if (isOverdue) {
+      const baseAmount = inst.expectedAmount;
+      const discountAmount = baseAmount * 0.04;
+      const totalAmount = baseAmount + discountAmount + (inst.penaltyFee || 0);
+      const daysLate = Math.floor((new Date().getTime() - new Date(inst.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+
+      message = generateOverdueNotice({
+        clientName: client.firstName,
+        periodNumber: inst.period,
+        daysLate: daysLate > 0 ? daysLate : 1,
+        baseAmount,
+        discountAmount,
+        penaltyAmount: inst.penaltyFee || 0,
+        totalAmount,
+        dueDate: inst.dueDate,
+        loan: loan as any
+      });
+    } else {
+      message = generatePaymentReminder({
+        clientName: client.firstName,
+        amount: inst.expectedAmount,
+        periodNumber: inst.period,
+        dueDate: inst.dueDate,
+        loan: loan as any
+      });
+    }
+
+    sendFBNotification({
+      message,
+      clientName: `${client.firstName} ${client.lastName}`,
+      fbProfileUrl: client.kycData?.fbProfileUrl,
+      messengerId: client.kycData?.messengerId,
+      onCopy: () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    });
+  };
+
+  return (
+    <button
+      onClick={handleNotify}
+      className={`flex items-center gap-1 px-2 py-1 text-[10px] uppercase font-bold rounded transition-all whitespace-nowrap ${
+        copied ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600/40'
+      }`}
+      title="Send Full-Force Ledger Update via FB"
+    >
+      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.092.301 2.246.464 3.443.464 6.627 0 12-4.974 12-11.111S18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.26L19.752 8l-6.561 6.963z"/></svg>
+      {copied ? '✓ COPIED' : 'FB NOTIFY'}
+    </button>
+  );
+}
+
 const RiskBadge = ({ client }: { client: ClientData }) => {
   const colorMap = {
     'EXCELLENT': { bg: 'bg-emerald-500', text: 'text-white' },
@@ -168,7 +239,6 @@ const RiskBadge = ({ client }: { client: ClientData }) => {
   );
 };
 
-// Trust Score Gauge Component
 const TrustScoreGauge = ({ client }: { client: ClientData }) => {
   const tierConfig = {
     'PRIME': { color: 'text-emerald-400', bg: 'bg-emerald-500/20', border: 'border-emerald-500/50', label: 'PRIME BORROWER', icon: '🏆' },
@@ -218,7 +288,6 @@ const TrustScoreGauge = ({ client }: { client: ClientData }) => {
   );
 };
 
-// Image Display Component
 const DocumentImage = ({ src, label }: { src: string | null; label: string }) => {
   if (!src) return null;
   return (
@@ -233,7 +302,6 @@ const DocumentImage = ({ src, label }: { src: string | null; label: string }) =>
   );
 };
 
-// Tab type
 type TabType = 'dossier' | 'loans' | 'transactions' | 'new-loan';
 
 export default function ClientProfileClient({ client }: { client: ClientData }) {
@@ -255,7 +323,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
 
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6 pb-20">
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pt-4">
         <div>
           <h1 className="text-2xl font-bold text-white">{client.firstName} {client.lastName}</h1>
@@ -274,7 +341,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
         </div>
       </div>
 
-      {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-xl">
           <p className="text-xs text-zinc-500 uppercase mb-2">Total Borrowed</p>
@@ -294,10 +360,8 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
         </div>
       </div>
 
-      {/* Trust Score Gauge */}
       <TrustScoreGauge client={client} />
 
-      {/* Tab Navigation */}
       <div className="relative z-10 flex gap-2 bg-zinc-900 p-1 rounded-xl overflow-x-auto">
         {tabs.map((tab) => (
           <button
@@ -316,7 +380,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
         ))}
       </div>
 
-      {/* KYC Dossier Tab */}
       {activeTab === 'dossier' && (
         <div className="space-y-6">
           {!hasKYC ? (
@@ -326,7 +389,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
             </div>
           ) : (
             <>
-              {/* Personal & Demographic Matrix */}
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
                 <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-4">📋 Personal & Demographic Matrix</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -345,7 +407,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                 </div>
               </div>
 
-              {/* Financial Interrogation */}
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
                 <h2 className="text-sm font-bold text-emerald-400 uppercase tracking-wider mb-4">💵 Financial Interrogation</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -370,7 +431,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                 </div>
               </div>
 
-              {/* Living Expenses */}
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
                 <h2 className="text-sm font-bold text-yellow-400 uppercase tracking-wider mb-4">🏠 Living Expenses & Family</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -393,7 +453,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                 </div>
               </div>
 
-              {/* Social Recon */}
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
                 <h2 className="text-sm font-bold text-purple-400 uppercase tracking-wider mb-4">🔍 Social Recon & References</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -417,7 +476,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                 </div>
               </div>
 
-              {/* Forensic Verification */}
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
                 <h2 className="text-sm font-bold text-orange-400 uppercase tracking-wider mb-4">📸 Forensic Verification</h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -433,7 +491,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                 )}
               </div>
 
-              {/* Digital Signature & Consent */}
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
                 <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wider mb-4">✍️ Digital Signature & Consent</h2>
                 {client.kycData!.digitalSignature ? (
@@ -459,7 +516,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
         </div>
       )}
 
-      {/* Loans Tab */}
       {activeTab === 'loans' && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
           <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-4">Loan History & P&L</h2>
@@ -516,7 +572,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                       <p className="text-xs text-zinc-500">Paid</p>
                       <p className="text-sm font-bold text-emerald-400">{formatCurrency(loan.totalPaid)}</p>
                     </div>
-                    {/* P1A: Net Profit Display */}
                     <div className={`rounded-lg p-3 text-center border ${
                       loan.netLoanProfit >= 0 
                         ? 'bg-emerald-500/10 border-emerald-500/30' 
@@ -529,7 +584,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                     </div>
                   </div>
                   
-                  {/* P&L Breakdown */}
                   <div className="mt-3 flex flex-wrap gap-4 text-xs text-zinc-500">
                     <span>Interest: <span className="text-emerald-400 font-medium">{formatCurrency(loan.totalInterestPaid)}</span></span>
                     <span>Penalties: <span className="text-amber-400 font-medium">{formatCurrency(loan.totalPenaltiesPaid)}</span></span>
@@ -541,7 +595,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                     )}
                   </div>
 
-                  {/* Progress Bar */}
                   <div className="mt-4">
                     <div className="flex justify-between text-xs text-zinc-500 mb-1">
                       <span>Progress: {loan.paidInstallments}/{loan.installmentsCount} installments</span>
@@ -555,13 +608,12 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                     </div>
                   </div>
 
-                  {/* RCI: Installment List with Collection Log */}
                   {loan.installments && loan.installments.length > 0 && (
                     <div className="mt-4">
                       <p className="text-xs text-zinc-500 uppercase mb-2">Installments</p>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
                         {loan.installments.map((inst) => (
-                          <div key={inst.id} className="bg-zinc-900 rounded-lg p-3">
+                          <div key={inst.id} className="bg-zinc-900 rounded-lg p-3 relative group border border-transparent hover:border-zinc-700 transition-colors">
                             <div className="flex justify-between items-center mb-2">
                               <div className="flex items-center gap-2">
                                 <span className="text-xs text-zinc-400">Period {inst.period}</span>
@@ -574,7 +626,11 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                                   {inst.status}
                                 </span>
                               </div>
-                              <span className="text-xs text-zinc-500">Due: {formatDate(inst.dueDate)}</span>
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs text-zinc-500">Due: {formatDate(inst.dueDate)}</span>
+                                {/* THE NEW DOSSIER FB NOTIFY BUTTON */}
+                                <DossierFBNotifyButton client={client} loan={loan} inst={inst} />
+                              </div>
                             </div>
                             <div className="flex justify-between text-xs mb-2">
                               <span className="text-zinc-400">Principal: <span className="text-white">{formatCurrency(inst.principal)}</span></span>
@@ -583,7 +639,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                                 <span className="text-rose-400">Penalty: {formatCurrency(inst.penaltyFee)}</span>
                               )}
                             </div>
-                            {/* RCI: Collection Log for non-PAID installments */}
                             {inst.status !== 'PAID' && (
                               <CollectionLog
                                 installmentId={inst.id}
@@ -605,7 +660,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
         </div>
       )}
 
-      {/* Transactions Tab */}
       {activeTab === 'transactions' && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
           <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-4">Transaction History</h2>
@@ -641,7 +695,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
         </div>
       )}
 
-      {/* New Loan Tab */}
       {activeTab === 'new-loan' && (
         <DirectLoanCalculator
           clientId={client.id}
