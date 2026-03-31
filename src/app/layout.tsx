@@ -1,4 +1,7 @@
+export const dynamic = "force-dynamic";
+
 import "./globals.css";
+import AppHeader from "@/components/AppHeader";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -13,8 +16,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-slate-950 text-slate-100 antialiased font-sans">
-        {children}
+      <body className="bg-slate-950 text-slate-100 antialiased font-sans min-h-screen flex flex-col">
+        <AppHeader />
+        <main className="flex-1">
+          {children}
+        </main>
       </body>
     </html>
   );
