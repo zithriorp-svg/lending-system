@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 interface LoginClientProps {
   showSeedButton: boolean;
@@ -114,6 +115,28 @@ export default function LoginClient({ showSeedButton }: LoginClientProps) {
             Unlock Vault
           </button>
         </form>
+
+        {/* Portal Navigation Links */}
+        <div className="mt-8 flex flex-col items-center space-y-4 border-t border-zinc-800 pt-6 w-full max-w-sm">
+          <p className="text-xs text-zinc-500 uppercase tracking-widest">Select Portal</p>
+          <div className="flex w-full justify-between gap-4">
+            <Link
+              href="/agent-portal"
+              className="flex-1 flex flex-col items-center justify-center py-3 px-2 bg-zinc-900/50 border border-zinc-700/50 rounded-lg hover:bg-zinc-800 hover:border-zinc-500 transition-all"
+            >
+              <span className="text-xl mb-1">💼</span>
+              <span className="text-xs font-medium text-zinc-300">Agent Gateway</span>
+            </Link>
+
+            <Link
+              href="/portal"
+              className="flex-1 flex flex-col items-center justify-center py-3 px-2 bg-zinc-900/50 border border-zinc-700/50 rounded-lg hover:bg-zinc-800 hover:border-zinc-500 transition-all"
+            >
+              <span className="text-xl mb-1">🏛️</span>
+              <span className="text-xs font-medium text-zinc-300">Client Vault</span>
+            </Link>
+          </div>
+        </div>
 
         <p className="text-center text-zinc-600 text-xs">
           Protected by role-based authentication
