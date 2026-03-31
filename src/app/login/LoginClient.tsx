@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface LoginClientProps {
   showSeedButton: boolean;
 }
 
 export default function LoginClient({ showSeedButton }: LoginClientProps) {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedSuccess, setSeedSuccess] = useState(false);
@@ -115,13 +117,16 @@ export default function LoginClient({ showSeedButton }: LoginClientProps) {
           </button>
         </form>
 
-        {/* CRITICAL: ENSURE THIS IS PHYSICALLY OUTSIDE AND BELOW THE </form> TAG */}
+        {/* ENSURE THIS IS PHYSICALLY OUTSIDE AND BELOW THE </form> TAG */}
         <div className="mt-8 flex flex-col items-center space-y-4 border-t border-zinc-800 pt-6 w-full max-w-sm mx-auto relative z-50">
           <p className="text-xs text-zinc-500 uppercase tracking-widest">Select Portal</p>
           <div className="flex w-full justify-between gap-4">
             <button
               type="button"
-              onPointerDown={() => window.location.assign('/agent-portal')}
+              onClick={(e) => {
+                e.preventDefault();
+                router.push('/agent-portal');
+              }}
               className="flex-1 flex flex-col items-center justify-center py-3 px-2 bg-transparent border border-zinc-700/50 rounded-lg hover:bg-zinc-800 hover:border-zinc-500 transition-all cursor-pointer touch-manipulation focus:outline-none"
             >
               <span className="text-xl mb-1">💼</span>
@@ -130,7 +135,10 @@ export default function LoginClient({ showSeedButton }: LoginClientProps) {
 
             <button
               type="button"
-              onPointerDown={() => window.location.assign('/portal')}
+              onClick={(e) => {
+                e.preventDefault();
+                router.push('/portal');
+              }}
               className="flex-1 flex flex-col items-center justify-center py-3 px-2 bg-transparent border border-zinc-700/50 rounded-lg hover:bg-zinc-800 hover:border-zinc-500 transition-all cursor-pointer touch-manipulation focus:outline-none"
             >
               <span className="text-xl mb-1">🏛️</span>
