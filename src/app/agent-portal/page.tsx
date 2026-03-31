@@ -177,79 +177,86 @@ export default async function AgentPortalPage() {
 
 /**
  * AGENT LOGIN GATEWAY COMPONENT
- * Matrix-styled login form for agent authentication
+ * Professional login form matching Client Vault aesthetic
  */
 function AgentLoginGateway() {
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-6">
-        {/* Logo & Title */}
-        <div className="text-center">
-          <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-emerald-600 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30 border border-emerald-500/20">
-            <span className="text-4xl">🛡️</span>
+    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Logo/Brand */}
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-emerald-600 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
+            <span className="text-4xl">💼</span>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">Agent Portal</h1>
-          <p className="text-zinc-500 text-sm font-mono">VAULT ACCESS GATEWAY</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Agent Gateway</h1>
+          <p className="text-zinc-400 text-sm">Secure Field Operations Portal</p>
         </div>
 
-        {/* Login Form */}
-        <form
-          action="/api/agent-auth/login"
-          method="POST"
-          className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-2xl shadow-black/50 space-y-5"
-        >
-          {/* Username Field */}
-          <div>
-            <label className="block text-xs text-zinc-500 uppercase tracking-wider mb-2 font-mono">
-              Username
-            </label>
-            <input
-              type="text"
-              name="username"
-              placeholder="YOUR_USERNAME"
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl p-4 text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 transition-all font-mono uppercase tracking-wider"
-              required
-              autoComplete="username"
-            />
-          </div>
+        {/* Login Card */}
+        <div className="bg-zinc-800/50 backdrop-blur-sm border border-zinc-700 rounded-2xl p-6 shadow-xl">
+          <h2 className="text-lg font-bold text-white mb-4 text-center">Agent Authentication</h2>
 
-          {/* PIN Field */}
-          <div>
-            <label className="block text-xs text-zinc-500 uppercase tracking-wider mb-2 font-mono">
-              6-Digit PIN
-            </label>
-            <input
-              type="password"
-              name="pin"
-              placeholder="• • • • • •"
-              maxLength={6}
-              inputMode="numeric"
-              pattern="[0-9]{6}"
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl p-4 text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 transition-all text-center text-2xl tracking-[0.5em] font-mono"
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className="w-full bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white py-4 rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 uppercase tracking-widest text-sm border border-emerald-500/30"
+          <form
+            action="/api/agent-auth/login"
+            method="POST"
+            className="space-y-4"
           >
-            Access Portal
-          </button>
-        </form>
+            {/* Username Field */}
+            <div>
+              <label className="block text-xs text-zinc-400 uppercase tracking-wider mb-2">
+                Username
+              </label>
+              <input
+                type="text"
+                name="username"
+                placeholder="Enter your username"
+                required
+                autoComplete="username"
+                className="w-full bg-zinc-900 border border-zinc-600 rounded-xl p-4 text-white text-lg font-mono text-center focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 placeholder:text-zinc-600"
+              />
+            </div>
+
+            {/* PIN Field */}
+            <div>
+              <label className="block text-xs text-zinc-400 uppercase tracking-wider mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                name="pin"
+                placeholder="Enter 6-digit PIN"
+                maxLength={6}
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                required
+                autoComplete="current-password"
+                className="w-full bg-zinc-900 border border-zinc-600 rounded-xl p-4 text-white text-lg text-center focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 placeholder:text-zinc-600"
+              />
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 uppercase tracking-wider"
+            >
+              Access Dashboard
+            </button>
+          </form>
+
+          {/* Help Text */}
+          <div className="mt-6 pt-4 border-t border-zinc-700">
+            <p className="text-xs text-zinc-500 text-center">
+              Use your assigned agent credentials.
+              <br />
+              If your account is locked, contact your Master Admin.
+            </p>
+          </div>
+        </div>
 
         {/* Footer */}
-        <div className="text-center space-y-2">
-          <p className="text-zinc-600 text-xs font-mono">
-            Contact your administrator for credentials
-          </p>
-          <div className="flex items-center justify-center gap-2 text-zinc-700 text-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="font-mono">SECURE CONNECTION</span>
-          </div>
-        </div>
+        <p className="text-center text-zinc-600 text-xs mt-6">
+          © {new Date().getFullYear()} FinTech Vault. All rights reserved.
+        </p>
       </div>
     </div>
   );
