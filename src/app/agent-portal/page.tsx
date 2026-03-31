@@ -4,25 +4,13 @@ import AgentPortalClient from "./AgentPortalClient";
 
 export const dynamic = "force-dynamic";
 
-/**
- * AGENT PORTAL GATEWAY
- *
- * This is the main entry point for the Agent Portal.
- * - Unauthenticated users see the login form
- * - Authenticated agents see their dashboard
- * - Locked agents are redirected to login with error
- */
 export default async function AgentPortalPage() {
   // Check if agent is logged in via cookie
   const cookieStore = await cookies();
   const agentSession = cookieStore.get("agent_session");
   const agentIdCookie = cookieStore.get("agent_id");
 
-  // Get error from URL params (for displaying login errors)
-  const url = new URL(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
-  // Note: In server components, we can't access request URL directly, so we pass error via searchParams in redirects
-
-  // If not authenticated, show login form
+  // If not authenticated, show login form INSTEAD of redirecting
   if (agentSession?.value !== "authenticated" || !agentIdCookie?.value) {
     return <AgentLoginGateway />;
   }
@@ -88,7 +76,6 @@ export default async function AgentPortalPage() {
     );
     const isOverdue = !!overdueInstallment;
 
-    // Calculate days late if overdue
     let daysLate = 0;
     if (overdueInstallment) {
       const today = new Date();
@@ -112,10 +99,8 @@ export default async function AgentPortalPage() {
       nextDuePeriod: pendingInstallment?.period || null,
       status: isOverdue ? 'OVERDUE' as const : 'ON_TRACK' as const,
       daysLate,
-      // FB profile data
       fbProfileUrl: loan.client.application?.fbProfileUrl || null,
       messengerId: loan.client.application?.messengerId || null,
-      // Full loan data for ledger
       loan: {
         id: loan.id,
         principal: Number(loan.principal),
@@ -175,15 +160,11 @@ export default async function AgentPortalPage() {
   return <AgentPortalClient agent={agentData} />;
 }
 
-/**
- * AGENT LOGIN GATEWAY COMPONENT
- * Professional login form matching Client Vault aesthetic
- */
+// THE AGENT GATEWAY UI
 function AgentLoginGateway() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo/Brand */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-emerald-600 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
             <span className="text-4xl">💼</span>
@@ -192,20 +173,12 @@ function AgentLoginGateway() {
           <p className="text-zinc-400 text-sm">Secure Field Operations Portal</p>
         </div>
 
-        {/* Login Card */}
         <div className="bg-zinc-800/50 backdrop-blur-sm border border-zinc-700 rounded-2xl p-6 shadow-xl">
           <h2 className="text-lg font-bold text-white mb-4 text-center">Agent Authentication</h2>
 
-          <form
-            action="/api/agent-auth/login"
-            method="POST"
-            className="space-y-4"
-          >
-            {/* Username Field */}
+          <form action="/api/agent-auth/login" method="POST" className="space-y-4">
             <div>
-              <label className="block text-xs text-zinc-400 uppercase tracking-wider mb-2">
-                Username
-              </label>
+              <label className="block text-xs text-zinc-400 uppercase tracking-wider mb-2">Username</label>
               <input
                 type="text"
                 name="username"
@@ -216,11 +189,8 @@ function AgentLoginGateway() {
               />
             </div>
 
-            {/* PIN Field */}
             <div>
-              <label className="block text-xs text-zinc-400 uppercase tracking-wider mb-2">
-                Password
-              </label>
+              <label className="block text-xs text-zinc-400 uppercase tracking-wider mb-2">Password</label>
               <input
                 type="password"
                 name="pin"
@@ -234,7 +204,6 @@ function AgentLoginGateway() {
               />
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               className="w-full bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 uppercase tracking-wider"
@@ -243,17 +212,14 @@ function AgentLoginGateway() {
             </button>
           </form>
 
-          {/* Help Text */}
           <div className="mt-6 pt-4 border-t border-zinc-700">
             <p className="text-xs text-zinc-500 text-center">
-              Use your assigned agent credentials.
-              <br />
+              Use your assigned agent credentials.<br />
               If your account is locked, contact your Master Admin.
             </p>
           </div>
         </div>
 
-        {/* Footer */}
         <p className="text-center text-zinc-600 text-xs mt-6">
           © {new Date().getFullYear()} FinTech Vault. All rights reserved.
         </p>
