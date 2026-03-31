@@ -5,23 +5,19 @@ import AgentPortalClient from "./AgentPortalClient";
 export const dynamic = "force-dynamic";
 
 export default async function AgentPortalPage() {
-  // Check if agent is logged in via cookie
   const cookieStore = await cookies();
   const agentSession = cookieStore.get("agent_session");
   const agentIdCookie = cookieStore.get("agent_id");
 
-  // If not authenticated, show login form INSTEAD of redirecting
   if (agentSession?.value !== "authenticated" || !agentIdCookie?.value) {
     return <AgentLoginGateway />;
   }
 
-  // Parse agent ID from cookie
   const agentId = parseInt(agentIdCookie.value);
   if (isNaN(agentId) || agentId <= 0) {
     return <AgentLoginGateway />;
   }
 
-  // Verify agent exists in database and check lock status
   const agent = await prisma.agent.findUnique({
     where: { id: agentId },
     select: {
@@ -34,12 +30,10 @@ export default async function AgentPortalPage() {
     }
   });
 
-  // If agent doesn't exist or is locked, clear session and show login
   if (!agent || agent.isLocked) {
     return <AgentLoginGateway />;
   }
 
-  // Fetch partitioned data for authenticated agent
   const agentLoans = await prisma.loan.findMany({
     where: {
       agentId: agent.id,
@@ -60,7 +54,6 @@ export default async function AgentPortalPage() {
     }
   });
 
-  // Calculate stats with full loan data for ledger
   const activeClients = agentLoans.map(loan => {
     const totalPaid = loan.payments.reduce((sum, p) => sum + Number(p.amount), 0);
     const totalPrincipalPaid = loan.installments
@@ -160,7 +153,6 @@ export default async function AgentPortalPage() {
   return <AgentPortalClient agent={agentData} />;
 }
 
-// THE AGENT GATEWAY UI
 function AgentLoginGateway() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 flex items-center justify-center p-4">
