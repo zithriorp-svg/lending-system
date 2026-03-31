@@ -453,9 +453,10 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                 </div>
               </div>
 
+              {/* UPGRADED SOCIAL RECON & LOCATION */}
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-                <h2 className="text-sm font-bold text-purple-400 uppercase tracking-wider mb-4">🔍 Social Recon & References</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <h2 className="text-sm font-bold text-purple-400 uppercase tracking-wider mb-4">🔍 Social Recon & Location</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-zinc-800 rounded-xl p-4">
                     <p className="text-xs text-zinc-500 uppercase mb-1">Facebook Profile</p>
                     {client.kycData!.fbProfileUrl ? (
@@ -471,6 +472,16 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                     <p className="text-white font-medium">{client.kycData!.referenceName || 'Not provided'}</p>
                     {client.kycData!.referencePhone && (
                       <p className="text-zinc-400 text-sm">{client.kycData!.referencePhone}</p>
+                    )}
+                  </div>
+                  <div className="bg-zinc-800 rounded-xl p-4">
+                    <p className="text-xs text-zinc-500 uppercase mb-1">Google Maps</p>
+                    {client.kycData!.locationUrl ? (
+                      <a href={client.kycData!.locationUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline break-all text-sm flex items-center gap-2">
+                        <span>📍</span> View Location
+                      </a>
+                    ) : (
+                      <p className="text-zinc-500">Not provided</p>
                     )}
                   </div>
                 </div>
@@ -628,7 +639,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                               </div>
                               <div className="flex items-center gap-3">
                                 <span className="text-xs text-zinc-500">Due: {formatDate(inst.dueDate)}</span>
-                                {/* THE NEW DOSSIER FB NOTIFY BUTTON */}
                                 <DossierFBNotifyButton client={client} loan={loan} inst={inst} />
                               </div>
                             </div>
