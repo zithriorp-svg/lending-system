@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 interface LoginClientProps {
   showSeedButton: boolean;
 }
 
 export default function LoginClient({ showSeedButton }: LoginClientProps) {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedSuccess, setSeedSuccess] = useState(false);
@@ -117,33 +115,39 @@ export default function LoginClient({ showSeedButton }: LoginClientProps) {
           </button>
         </form>
 
-        {/* ENSURE THIS IS PHYSICALLY OUTSIDE AND BELOW THE </form> TAG */}
-        <div className="mt-8 flex flex-col items-center space-y-4 border-t border-zinc-800 pt-6 w-full max-w-sm mx-auto relative z-50">
+        {/* CRITICAL: THIS MUST BE PHYSICALLY OUTSIDE THE MAIN <form> TAG */}
+        <div className="mt-8 flex flex-col items-center space-y-4 border-t border-zinc-800 pt-6 w-full max-w-sm mx-auto isolate pointer-events-auto relative z-[99999]">
           <p className="text-xs text-zinc-500 uppercase tracking-widest">Select Portal</p>
           <div className="flex w-full justify-between gap-4">
-            <button
-              type="button"
+            <div
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                window.location.href = '/agent-portal';
+              }}
               onClick={(e) => {
                 e.preventDefault();
-                router.push('/agent-portal');
+                window.location.href = '/agent-portal';
               }}
-              className="flex-1 flex flex-col items-center justify-center py-3 px-2 bg-transparent border border-zinc-700/50 rounded-lg hover:bg-zinc-800 hover:border-zinc-500 transition-all cursor-pointer touch-manipulation focus:outline-none"
+              className="flex-1 flex flex-col items-center justify-center py-3 px-2 bg-transparent border border-zinc-700/50 rounded-lg active:bg-zinc-800 transition-all cursor-pointer select-none touch-manipulation"
             >
               <span className="text-xl mb-1">💼</span>
               <span className="text-xs font-medium text-zinc-300">Agent Gateway</span>
-            </button>
+            </div>
 
-            <button
-              type="button"
+            <div
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                window.location.href = '/portal';
+              }}
               onClick={(e) => {
                 e.preventDefault();
-                router.push('/portal');
+                window.location.href = '/portal';
               }}
-              className="flex-1 flex flex-col items-center justify-center py-3 px-2 bg-transparent border border-zinc-700/50 rounded-lg hover:bg-zinc-800 hover:border-zinc-500 transition-all cursor-pointer touch-manipulation focus:outline-none"
+              className="flex-1 flex flex-col items-center justify-center py-3 px-2 bg-transparent border border-zinc-700/50 rounded-lg active:bg-zinc-800 transition-all cursor-pointer select-none touch-manipulation"
             >
               <span className="text-xl mb-1">🏛️</span>
               <span className="text-xs font-medium text-zinc-300">Client Vault</span>
-            </button>
+            </div>
           </div>
         </div>
 
