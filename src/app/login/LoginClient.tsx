@@ -115,39 +115,22 @@ export default function LoginClient({ showSeedButton }: LoginClientProps) {
           </button>
         </form>
 
-        {/* CRITICAL: THIS MUST BE PHYSICALLY OUTSIDE THE MAIN <form> TAG */}
-        <div className="mt-8 flex flex-col items-center space-y-4 border-t border-zinc-800 pt-6 w-full max-w-sm mx-auto isolate pointer-events-auto relative z-[99999]">
-          <p className="text-xs text-zinc-500 uppercase tracking-widest">Select Portal</p>
-          <div className="flex w-full justify-between gap-4">
-            <div
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                window.location.href = '/agent-portal';
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                window.location.href = '/agent-portal';
-              }}
-              className="flex-1 flex flex-col items-center justify-center py-3 px-2 bg-transparent border border-zinc-700/50 rounded-lg active:bg-zinc-800 transition-all cursor-pointer select-none touch-manipulation"
-            >
-              <span className="text-xl mb-1">💼</span>
-              <span className="text-xs font-medium text-zinc-300">Agent Gateway</span>
-            </div>
+        {/* MUST BE OUTSIDE THE </form> TAG */}
+        <div className="mt-8 flex flex-col items-center space-y-3 border-t border-zinc-800 pt-6 w-full max-w-sm mx-auto">
+          <p className="text-xs text-zinc-500 uppercase tracking-widest mb-2">System Portals</p>
 
-            <div
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                window.location.href = '/portal';
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                window.location.href = '/portal';
-              }}
-              className="flex-1 flex flex-col items-center justify-center py-3 px-2 bg-transparent border border-zinc-700/50 rounded-lg active:bg-zinc-800 transition-all cursor-pointer select-none touch-manipulation"
-            >
-              <span className="text-xl mb-1">🏛️</span>
-              <span className="text-xs font-medium text-zinc-300">Client Vault</span>
-            </div>
+          <div className="w-full bg-zinc-900/50 border border-zinc-800 rounded p-3 text-center">
+            <p className="text-xs text-zinc-500 mb-1">💼 Agent Gateway</p>
+            <p className="text-xs font-mono text-zinc-300 select-all break-all">
+              https://my-project-lovat-three-98.vercel.app/agent-portal
+            </p>
+          </div>
+
+          <div className="w-full bg-zinc-900/50 border border-zinc-800 rounded p-3 text-center">
+            <p className="text-xs text-zinc-500 mb-1">🏛️ Client Vault</p>
+            <p className="text-xs font-mono text-zinc-300 select-all break-all">
+              https://my-project-lovat-three-98.vercel.app/portal
+            </p>
           </div>
         </div>
 
