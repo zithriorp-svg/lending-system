@@ -1,22 +1,21 @@
-export const dynamic = "force-dynamic";
-
 import "./globals.css";
-import AppHeader from "@/components/AppHeader";
+import type { Metadata } from "next";
 
-export const metadata = {
-  title: 'FinTech Vault',
-  description: 'Cloud Loan Management System',
-}
+export const metadata: Metadata = {
+  title: "FinTech Vault",
+  description: "Secure Command Center",
+};
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
-      <body className="bg-[#0a0a0a] text-white antialiased min-h-screen flex flex-col">
-        <AppHeader />
-        <main className="flex-1">
-          {children}
-        </main>
+      <body className="bg-slate-950 text-slate-100 antialiased font-sans">
+        {children}
       </body>
     </html>
-  )
+  );
 }
