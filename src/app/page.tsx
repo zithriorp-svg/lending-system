@@ -12,8 +12,33 @@ import { getActivePortfolio } from "@/lib/portfolio";
 
 export const dynamic = "force-dynamic";
 
+// Helper to serialize Decimal to Number for Client Components
+const serializeLoan = (loan: any) => ({
+  id: loan.id,
+  principal: Number(loan.principal),
+  interestRate: Number(loan.interestRate),
+  termDuration: loan.termDuration,
+  totalRepayment: Number(loan.totalRepayment),
+  totalPaid: Number(loan.totalPaid),
+  remainingBalance: Number(loan.remainingBalance),
+  startDate: loan.startDate,
+  endDate: loan.endDate,
+  status: loan.status,
+  goodPayerDiscountRevoked: loan.goodPayerDiscountRevoked,
+  installments: loan.installments?.map((inst: any) => ({
+    period: inst.period,
+    dueDate: inst.dueDate,
+    expectedAmount: Number(inst.expectedAmount),
+    principal: Number(inst.principal),
+    interest: Number(inst.interest),
+    penaltyFee: Number(inst.penaltyFee),
+    status: inst.status,
+    paymentDate: inst.paymentDate,
+    amountPaid: Number(inst.amountPaid)
+  })) || []
+});
+
 export default async function Dashboard() {
-  // RBAC: Extract user role from session cookie
   const cookieStore = await cookies();
   const userRole = cookieStore.get("user_role")?.value || "AGENT";
   const isAdmin = userRole === "ADMIN";
@@ -21,13 +46,11 @@ export default async function Dashboard() {
 
   const portfolio = await getActivePortfolio();
 
-  // Fetch all portfolios for the application link generator
   const portfolioRecords = await prisma.systemPortfolio.findMany({
     select: { id: true, name: true },
     orderBy: { createdAt: 'asc' }
   });
   
-  // Serialize portfolios for client component
   const portfolios = portfolioRecords.map(p => ({
     id: p.id,
     name: p.name
@@ -46,115 +69,58 @@ export default async function Dashboard() {
     }
   });
   
-  // Helper function to format ledger entries in human-readable format
   const formatLedgerEntry = (ledger: typeof ledgers[0]) => {
     const amount = Number(ledger.amount).toLocaleString('en-US', { minimumFractionDigits: 2 });
     const clientName = ledger.loan?.client 
       ? `${ledger.loan.client.firstName} ${ledger.loan.client.lastName}`
       : null;
     
-    // Determine transaction type and format accordingly
     switch (ledger.transactionType) {
       case 'LOAN_DISBURSEMENT':
       case 'DISBURSEMENT':
-        return {
-          icon: '💸',
-          title: 'Loan Disbursed',
-          description: clientName 
-            ? `Disbursed ₱${amount} to ${clientName}`
-            : `Disbursed ₱${amount}`,
-          color: 'text-blue-400'
-        };
+        return { icon: '💸', title: 'Loan Disbursed', description: clientName ? `Disbursed ₱${amount} to ${clientName}` : `Disbursed ₱${amount}`, color: 'text-blue-400' };
       case 'LOAN_REPAYMENT':
       case 'REPAYMENT':
-        return {
-          icon: '💵',
-          title: 'Payment Received',
-          description: clientName 
-            ? `${clientName} paid ₱${amount}`
-            : `Payment of ₱${amount} received`,
-          color: 'text-emerald-400'
-        };
+        return { icon: '💵', title: 'Payment Received', description: clientName ? `${clientName} paid ₱${amount}` : `Payment of ₱${amount} received`, color: 'text-emerald-400' };
       case 'CAPITAL_DEPOSIT':
       case 'DEPOSIT':
-        return {
-          icon: '🏦',
-          title: 'Capital Injected',
-          description: `₱${amount} added to vault`,
-          color: 'text-emerald-400'
-        };
+        return { icon: '🏦', title: 'Capital Injected', description: `₱${amount} added to vault`, color: 'text-emerald-400' };
       case 'CAPITAL_WITHDRAWAL':
       case 'WITHDRAWAL':
-        return {
-          icon: '📤',
-          title: 'Capital Withdrawn',
-          description: `₱${amount} withdrawn from vault`,
-          color: 'text-amber-400'
-        };
+        return { icon: '📤', title: 'Capital Withdrawn', description: `₱${amount} withdrawn from vault`, color: 'text-amber-400' };
       case 'INTEREST_COLLECTION':
-        return {
-          icon: '📈',
-          title: 'Interest Collected',
-          description: clientName 
-            ? `Interest of ₱${amount} from ${clientName}`
-            : `Interest collection: ₱${amount}`,
-          color: 'text-yellow-400'
-        };
+        return { icon: '📈', title: 'Interest Collected', description: clientName ? `Interest of ₱${amount} from ${clientName}` : `Interest collection: ₱${amount}`, color: 'text-yellow-400' };
       case 'PENALTY':
-        return {
-          icon: '⚠️',
-          title: 'Penalty Applied',
-          description: clientName 
-            ? `Penalty of ₱${amount} to ${clientName}`
-            : `Penalty: ₱${amount}`,
-          color: 'text-red-400'
-        };
+        return { icon: '⚠️', title: 'Penalty Applied', description: clientName ? `Penalty of ₱${amount} to ${clientName}` : `Penalty: ₱${amount}`, color: 'text-red-400' };
       default:
-        // Fallback to raw ledger accounts for unknown types
-        return {
-          icon: '📋',
-          title: ledger.transactionType,
-          description: `${ledger.debitAccount} → ${ledger.creditAccount}`,
-          color: 'text-zinc-400'
-        };
+        return { icon: '📋', title: ledger.transactionType, description: `${ledger.debitAccount} → ${ledger.creditAccount}`, color: 'text-zinc-400' };
     }
   };
-  // PRE-APPROVED are fast-tracked prime borrowers (Trust Score >= 90)
+
   const preApprovedApps = await prisma.application.findMany({
-    where: {
-      portfolio,
-      status: 'PRE-APPROVED'
-    },
+    where: { portfolio, status: 'PRE-APPROVED' },
     orderBy: { id: 'desc' }
   });
 
   const pendingApps = await prisma.application.findMany({
-    where: {
-      portfolio,
-      status: 'Pending'
-    },
+    where: { portfolio, status: 'Pending' },
     orderBy: { id: 'desc' }
   });
 
-  // RBAC: Only calculate financial metrics for Admin users
   let vaultCash = 0;
   let outstandingLoans = 0;
   let deployableCapital = 0;
-  let projectedRebates = 0; // 4% Good Payer Discount pool
+  let projectedRebates = 0; 
 
   if (isAdmin) {
-    const capitalTransactions = await prisma.capitalTransaction.findMany({ 
-      where: { portfolio } 
-    });
+    const capitalTransactions = await prisma.capitalTransaction.findMany({ where: { portfolio } });
     let totalCapitalDeposits = 0, totalCapitalWithdrawals = 0;
     capitalTransactions.forEach(tx => {
       if (tx.type === "DEPOSIT") totalCapitalDeposits += Number(tx.amount);
       else totalCapitalWithdrawals += Number(tx.amount);
     });
 
-    const expenses = await prisma.expense.findMany({ 
-      where: { portfolio } 
-    });
+    const expenses = await prisma.expense.findMany({ where: { portfolio } });
     let totalExpenses = 0;
     expenses.forEach(exp => totalExpenses += Number(exp.amount));
 
@@ -163,7 +129,6 @@ export default async function Dashboard() {
       if (entry.debitAccount === "Loans Receivable") totalDisbursements += Number(entry.amount);
     });
 
-    // Get payments through loans in this portfolio
     const loansInPortfolio = await prisma.loan.findMany({
       where: { portfolio },
       select: { id: true }
@@ -171,10 +136,7 @@ export default async function Dashboard() {
     const loanIds = loansInPortfolio.map(l => l.id);
 
     const payments = await prisma.payment.findMany({ 
-      where: { 
-        loanId: { in: loanIds },
-        status: "Paid" 
-      } 
+      where: { loanId: { in: loanIds }, status: "Paid" } 
     });
     let totalPrincipalCollected = 0, totalInterestCollected = 0;
     payments.forEach(p => {
@@ -184,26 +146,17 @@ export default async function Dashboard() {
 
     vaultCash = totalCapitalDeposits - totalCapitalWithdrawals - totalDisbursements + totalPrincipalCollected + totalInterestCollected - totalExpenses;
     outstandingLoans = totalDisbursements - totalPrincipalCollected;
-    
-    // I.C.D.R.S. Phase 2: Deployable Capital (85% safety buffer)
     deployableCapital = Number(vaultCash) * 0.85;
     
-    // REBATE TRAP: Calculate 4% Good Payer Discount pool from active loans
     const activeLoans = await prisma.loan.findMany({
-      where: { 
-        portfolio,
-        status: 'ACTIVE'
-      },
+      where: { portfolio, status: 'ACTIVE' },
       select: { principal: true }
     });
     let totalActivePrincipal = 0;
-    activeLoans.forEach(loan => {
-      totalActivePrincipal += Number(loan.principal);
-    });
-    projectedRebates = totalActivePrincipal * 0.04; // 4% discount pool
+    activeLoans.forEach(loan => { totalActivePrincipal += Number(loan.principal); });
+    projectedRebates = totalActivePrincipal * 0.04; 
   }
 
-  // === PROACTIVE HUD TIME-HORIZON QUERIES ===
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
@@ -214,83 +167,36 @@ export default async function Dashboard() {
   nextWeek.setDate(today.getDate() + 7);
   nextWeek.setHours(23, 59, 59, 999);
 
-  // 1. OVERDUE: dueDate < today AND status === 'PENDING'
+  // LOAD FULL LEDGER INCLUDES
+  const fullLoanInclude = {
+    client: { include: { application: true } }, 
+    agent: { select: { id: true, name: true, phone: true, portfolio: true } },
+    installments: { orderBy: { period: 'asc' } as const }
+  };
+
   const overdueInstallments = await prisma.loanInstallment.findMany({
-    where: {
-      status: "PENDING",
-      dueDate: { lt: today },
-      loan: { portfolio }
-    },
-    include: {
-      loan: { 
-        include: { 
-          client: true, 
-          agent: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-              portfolio: true
-            }
-          } 
-        } 
-      }
-    },
+    where: { status: "PENDING", dueDate: { lt: today }, loan: { portfolio } },
+    include: { loan: { include: fullLoanInclude } },
     orderBy: { dueDate: 'asc' }
   });
 
-  // 2. DUE TODAY: exact day match AND status === 'PENDING'
   const dueTodayInstallments = await prisma.loanInstallment.findMany({
-    where: {
-      status: "PENDING",
-      dueDate: {
-        gte: today,
-        lte: todayEnd
-      },
-      loan: { portfolio }
-    },
-    include: {
-      loan: { 
-        include: { 
-          client: true, 
-          agent: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-              portfolio: true
-            }
-          } 
-        } 
-      }
-    },
+    where: { status: "PENDING", dueDate: { gte: today, lte: todayEnd }, loan: { portfolio } },
+    include: { loan: { include: fullLoanInclude } },
     orderBy: { dueDate: 'asc' }
   });
 
-  // 3. UPCOMING (7-DAY RADAR): dueDate > today AND dueDate <= nextWeek AND status === 'PENDING'
   const upcomingInstallments = await prisma.loanInstallment.findMany({
-    where: {
-      status: "PENDING",
-      dueDate: {
-        gt: todayEnd,
-        lte: nextWeek
-      },
-      loan: { portfolio }
-    },
-    include: {
-      loan: { include: { client: true } }
-    },
+    where: { status: "PENDING", dueDate: { gt: todayEnd, lte: nextWeek }, loan: { portfolio } },
+    include: { loan: { include: fullLoanInclude } },
     orderBy: { dueDate: 'asc' }
   });
 
-  // Calculate days late for overdue items
   const getDaysLate = (dueDate: Date): number => {
     const diffTime = today.getTime() - new Date(dueDate).getTime();
     return Math.floor(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  // Serialize for client component - include phone, firstName, agentName, clientId for Click-to-Collect and Deep-Linking
-  // Also include penaltyFee for dynamic notification templates
   const overdueAlerts = overdueInstallments.map(i => ({
     id: i.id,
     loanId: i.loanId,
@@ -303,7 +209,10 @@ export default async function Dashboard() {
     phone: i.loan.client.phone || '',
     agentName: i.loan.agent?.name || null,
     daysLate: getDaysLate(i.dueDate),
-    penaltyFee: Number(i.penaltyFee) || 0 // Dynamic penalty from installment
+    penaltyFee: Number(i.penaltyFee) || 0,
+    fbProfileUrl: i.loan.client.application?.fbProfileUrl || null,
+    messengerId: i.loan.client.application?.messengerId || null,
+    loan: serializeLoan(i.loan)
   }));
 
   const dueTodayAlerts = dueTodayInstallments.map(i => ({
@@ -317,7 +226,10 @@ export default async function Dashboard() {
     firstName: i.loan.client.firstName,
     phone: i.loan.client.phone || '',
     agentName: i.loan.agent?.name || null,
-    penaltyFee: Number(i.penaltyFee) || 0 // Dynamic penalty from installment
+    penaltyFee: Number(i.penaltyFee) || 0,
+    fbProfileUrl: i.loan.client.application?.fbProfileUrl || null,
+    messengerId: i.loan.client.application?.messengerId || null,
+    loan: serializeLoan(i.loan)
   }));
 
   const upcomingAlerts = upcomingInstallments.map(i => ({
@@ -327,7 +239,14 @@ export default async function Dashboard() {
     period: i.period,
     dueDate: i.dueDate,
     expectedAmount: Number(i.expectedAmount),
-    clientName: `${i.loan.client.firstName} ${i.loan.client.lastName}`
+    clientName: `${i.loan.client.firstName} ${i.loan.client.lastName}`,
+    firstName: i.loan.client.firstName,
+    phone: i.loan.client.phone || '',
+    agentName: i.loan.agent?.name || null,
+    penaltyFee: Number(i.penaltyFee) || 0,
+    fbProfileUrl: i.loan.client.application?.fbProfileUrl || null,
+    messengerId: i.loan.client.application?.messengerId || null,
+    loan: serializeLoan(i.loan)
   }));
 
   return (
@@ -344,10 +263,8 @@ export default async function Dashboard() {
         <LockVaultButton />
       </div>
 
-      {/* Live Temporal Panel */}
       <LiveClock />
 
-      {/* RBAC: Financial KPI Grid - ADMIN ONLY */}
       {isAdmin && (
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
@@ -371,19 +288,14 @@ export default async function Dashboard() {
         </div>
       )}
 
-      {/* HUD Alerts Card - VISIBLE TO ALL */}
-      <DelinquencyAlerts overdue={overdueAlerts} dueToday={dueTodayAlerts} upcoming={upcomingAlerts} />
+      <DelinquencyAlerts overdue={overdueAlerts as any} dueToday={dueTodayAlerts as any} upcoming={upcomingAlerts as any} />
 
-      {/* RBAC: Capital Re-deployment Queue - ADMIN ONLY */}
       {isAdmin && <CapitalRedeploymentQueue />}
 
-      {/* Quick Actions - Role-filtered */}
       <QuickActionsGrid isAdmin={isAdmin} portfolios={portfolios} />
 
-      {/* RBAC: AI Strategic Forecaster (MatrixCopilot) - ADMIN ONLY - Collapsible */}
       {isAdmin && <MatrixCopilot />}
 
-      {/* AUM: PRE-APPROVED Applications - VISIBLE TO ALL */}
       {preApprovedApps.length > 0 && (
         <div className="bg-gradient-to-r from-emerald-900/50 to-teal-900/50 border border-emerald-500/30 rounded-2xl p-6 shadow-xl">
           <div className="flex justify-between items-center mb-4">
@@ -418,7 +330,6 @@ export default async function Dashboard() {
         </div>
       )}
 
-      {/* Standard Pending Applications Queue - VISIBLE TO ALL */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider">Pending Applications</h2>
@@ -447,7 +358,6 @@ export default async function Dashboard() {
         </div>
       </div>
 
-      {/* RBAC: Recent Ledger Activity - ADMIN ONLY */}
       {isAdmin && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
           <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-4">Recent Ledger Activity</h2>
@@ -482,7 +392,6 @@ export default async function Dashboard() {
         </div>
       )}
 
-      {/* RBAC: DEBUG Time-Travel Tool - ADMIN ONLY */}
       {isAdmin && <TimeTravelDebug />}
     </div>
   );
