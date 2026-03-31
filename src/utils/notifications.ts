@@ -1,11 +1,11 @@
+import { NextResponse } from "next/server";
+
 /**
- * OMNICHANNEL NOTIFICATION ENGINE
- * 
+ * OMNICHANNEL NOTIFICATION ENGINE - FULL FORCE DOCTRINE
  * Generates dynamic, context-aware message templates for FB Messenger notifications.
- * All templates use absolute numbers, proper currency formatting, and detailed ledger breakdowns.
+ * All templates include the FULL LEDGER to ensure absolute transparency.
  */
 
-// Currency formatter - Philippine Peso
 const formatCurrency = (amount: number): string => {
   return `₱${Math.abs(amount).toLocaleString('en-US', { 
     minimumFractionDigits: 2, 
@@ -13,18 +13,6 @@ const formatCurrency = (amount: number): string => {
   })}`;
 };
 
-// Date formatter - human readable
-const formatDate = (date: Date | string): string => {
-  const d = new Date(date);
-  return d.toLocaleDateString('en-US', { 
-    weekday: 'long',
-    month: 'long', 
-    day: 'numeric', 
-    year: 'numeric' 
-  });
-};
-
-// Short date formatter
 const formatShortDate = (date: Date | string): string => {
   const d = new Date(date);
   return d.toLocaleDateString('en-US', { 
@@ -45,7 +33,7 @@ export interface InstallmentData {
   principal: number;
   interest: number;
   penaltyFee: number;
-  status: string; // PENDING, PAID, LATE, MISSED, PARTIAL
+  status: string; 
   paymentDate: Date | string | null;
   amountPaid: number;
 }
@@ -66,19 +54,12 @@ export interface LoanData {
 }
 
 // ============================================================================
-// LEDGER SUMMARY HELPER
+// THE FULL FORCE LEDGER SUMMARY 
 // ============================================================================
 
-/**
- * Generates the bottom half of notification messages with:
- * - Overall Account Status
- * - Payment History (Cleared)
- * - Pending & Overdue Installments
- */
 export function generateLedgerSummary(loan: LoanData): string {
   const installments = loan.installments || [];
   
-  // Separate installments by status
   const paidInstallments = installments
     .filter(i => i.status === 'PAID' || i.status === 'LATE')
     .sort((a, b) => a.period - b.period);
@@ -87,16 +68,16 @@ export function generateLedgerSummary(loan: LoanData): string {
     .filter(i => i.status === 'PENDING' || i.status === 'MISSED' || i.status === 'PARTIAL' || i.status === 'LATE')
     .sort((a, b) => a.period - b.period);
 
-  // Build ledger sections
   let ledger = `\n📊 OVERALL ACCOUNT STATUS:\n`;
+  ledger += `----------------------------------\n`;
   ledger += `- Total Loan Amount: ${formatCurrency(loan.totalRepayment)}\n`;
   ledger += `- Total Paid to Date: ${formatCurrency(loan.totalPaid)}\n`;
   ledger += `- Remaining Balance: ${formatCurrency(loan.remainingBalance)}\n`;
+  ledger += `----------------------------------\n`;
 
-  // Payment History (Cleared)
   ledger += `\n✅ PAYMENT HISTORY (CLEARED):\n`;
   if (paidInstallments.length === 0) {
-    ledger += `   None\n`;
+    ledger += `   [ No payments made yet ]\n`;
   } else {
     paidInstallments.forEach(inst => {
       const paidDate = inst.paymentDate ? formatShortDate(inst.paymentDate) : 'N/A';
@@ -104,16 +85,15 @@ export function generateLedgerSummary(loan: LoanData): string {
     });
   }
 
-  // Pending & Overdue Installments
   ledger += `\n❌ PENDING & OVERDUE INSTALLMENTS:\n`;
   if (pendingInstallments.length === 0) {
-    ledger += `   None\n`;
+    ledger += `   [ All current installments cleared ]\n`;
   } else {
     pendingInstallments.forEach(inst => {
       const dueDate = formatShortDate(inst.dueDate);
-      const penalties = inst.penaltyFee > 0 ? ` (Penalties: ${formatCurrency(inst.penaltyFee)})` : '';
+      const penalties = inst.penaltyFee > 0 ? ` (+${formatCurrency(inst.penaltyFee)} Penalty)` : '';
       const statusTag = inst.status === 'LATE' || inst.status === 'MISSED' ? '⚠️ OVERDUE' : '';
-      ledger += `   ❌ Inst #${inst.period}: ${dueDate} - ${formatCurrency(inst.expectedAmount)}${penalties} ${statusTag}\n`;
+      ledger += `   ${inst.status === 'LATE' || inst.status === 'MISSED' ? '❌' : '⏳'} Inst #${inst.period}: ${dueDate} - ${formatCurrency(inst.expectedAmount)}${penalties} ${statusTag}\n`;
     });
   }
 
@@ -121,297 +101,69 @@ export function generateLedgerSummary(loan: LoanData): string {
 }
 
 // ============================================================================
-// NOTIFICATION TEMPLATES
+// NOTIFICATION TEMPLATES (ALL MOVEMENTS OF MONEY)
 // ============================================================================
 
-/**
- * OVERDUE / PENALTY NOTICE
- * Sent when a payment is late
- * 
- * IMPORTANT: penaltyAmount is DYNAMIC - passed from installment.penaltyFee
- */
-export function generateOverdueNotice(params: {
-  clientName: string;
-  periodNumber: number;
-  daysLate: number;
-  baseAmount: number;
-  discountAmount: number;
-  penaltyAmount: number; // DYNAMIC - from installment.penaltyFee
-  totalAmount: number;
-  dueDate: Date | string;
-  loan: LoanData;
-}): string {
-  const { clientName, periodNumber, daysLate, baseAmount, discountAmount, penaltyAmount, totalAmount, dueDate, loan } = params;
-  
-  let message = `URGENT ACCOUNT NOTICE ⚠️
-
-Hello ${clientName},
-
-Our records indicate that your payment for Installment #${periodNumber} is currently OVERDUE.
-
-🚨 PENALTY & DISCOUNT FORFEITURE:
-Because this payment is late, your Good Payer Discount has been strictly REVOKED.
-- Base Installment: ${formatCurrency(baseAmount)}
-- Revoked Discount: + ${formatCurrency(discountAmount)}
-- Applied Late Fees: + ${formatCurrency(penaltyAmount)}
-----------------------------------
-📌 TOTAL OVERDUE FOR INST #${periodNumber}: ${formatCurrency(totalAmount)}
-
-📅 MISSED DUE DATE: ${formatShortDate(dueDate)}`;
-
-  // Append Ledger Summary
-  message += generateLedgerSummary(loan);
-
-  message += `\nPlease settle your overdue balance immediately to prevent further penalties or account escalation.
-
-- Company Manager`;
-
+export function generateLoanApproved(params: { clientName: string; amount: number; loan: LoanData; }): string {
+  let message = `✅ LOAN APPLICATION APPROVED ✅\n\nHello ${params.clientName},\n\nGreat news! Your loan application for ${formatCurrency(params.amount)} has been officially APPROVED. Please review your full repayment schedule below.`;
+  message += generateLedgerSummary(params.loan);
+  message += `\n\n- FinTech Vault Management`;
   return message;
 }
 
-/**
- * PAYMENT REMINDER - 2-Day Heads Up before due date
- */
-export function generatePaymentReminder(params: {
-  clientName: string;
-  amount: number;
-  periodNumber: number;
-  dueDate: Date | string;
-  loan: LoanData;
-}): string {
-  const { clientName, amount, periodNumber, dueDate, loan } = params;
-  
-  let message = `UPCOMING PAYMENT REMINDER 🔔
-
-Hello ${clientName},
-
-This is a reminder that your next payment for Installment #${periodNumber} is due in 2 days.
-
-📌 AMOUNT DUE: ${formatCurrency(amount)} (Includes your 6% Good Payer rate)
-📅 DUE DATE: ${formatShortDate(dueDate)}
-
-🚨 IMPORTANT: If you pay late, the 4% discount is no longer applicable and you will be charged the standard 10% contract rate plus penalties.`;
-
-  // Append Ledger Summary
-  message += generateLedgerSummary(loan);
-
-  message += `\n- Company Manager`;
-
+export function generateLoanDisbursed(params: { clientName: string; amount: number; disbursementDate: Date | string; loan: LoanData; }): string {
+  let message = `💸 FUNDS DISBURSED 💸\n\nHello ${params.clientName},\n\nYour loan funds of ${formatCurrency(params.amount)} have been successfully released to you on ${formatShortDate(params.disbursementDate)}. Your billing cycle has officially started.`;
+  message += generateLedgerSummary(params.loan);
+  message += `\n\n- FinTech Vault Management`;
   return message;
 }
 
-/**
- * OFFICIAL RECEIPT - After payment received
- */
-export function generatePaymentReceipt(params: {
-  clientName: string;
-  amount: number;
-  paymentDate: Date | string;
-  periodNumber: number;
-  loan: LoanData;
-}): string {
-  const { clientName, amount, paymentDate, periodNumber, loan } = params;
-  
-  let message = `OFFICIAL PAYMENT RECEIPT 🧾
-
-Hello ${clientName},
-
-We have successfully received your payment for Installment #${periodNumber}. Thank you for your prompt payment!
-
-📌 AMOUNT RECEIVED: ${formatCurrency(amount)}
-📅 DATE POSTED: ${formatShortDate(paymentDate)}`;
-
-  // Append Ledger Summary
-  message += generateLedgerSummary(loan);
-
-  message += `\n- Company Manager`;
-
+export function generatePaymentReminder(params: { clientName: string; amount: number; periodNumber: number; dueDate: Date | string; loan: LoanData; }): string {
+  let message = `🔔 UPCOMING PAYMENT REMINDER 🔔\n\nHello ${params.clientName},\n\nThis is a reminder that your next payment for Installment #${params.periodNumber} is due soon.\n\n📌 AMOUNT DUE: ${formatCurrency(params.amount)}\n📅 DUE DATE: ${formatShortDate(params.dueDate)}\n\n🚨 IMPORTANT: If you pay late, your 4% discount will be revoked and you will be charged the standard 10% contract rate plus penalties.`;
+  message += generateLedgerSummary(params.loan);
+  message += `\n\n- FinTech Vault Management`;
   return message;
 }
 
-/**
- * LOAN DISBURSED - When funds are released
- */
-export function generateLoanDisbursed(params: {
-  clientName: string;
-  amount: number;
-  disbursementDate: Date | string;
-  loan: LoanData;
-}): string {
-  const { clientName, amount, disbursementDate, loan } = params;
-  
-  let message = `LOAN DISBURSEMENT CONFIRMED 💸
-
-Hello ${clientName},
-
-Your loan funds have been successfully released to you! 
-
-📌 AMOUNT DISBURSED: ${formatCurrency(amount)}
-📅 DATE: ${formatShortDate(disbursementDate)}`;
-
-  // Append Ledger Summary
-  message += generateLedgerSummary(loan);
-
-  message += `\n- Company Manager`;
-
+export function generateDueTodayNotice(params: { clientName: string; amount: number; periodNumber: number; loan: LoanData; }): string {
+  let message = `⚠️ PAYMENT DUE TODAY ⚠️\n\nHello ${params.clientName},\n\nYour payment of ${formatCurrency(params.amount)} for Installment #${params.periodNumber} is DUE TODAY. Please settle your account before midnight to maintain your Good Payer discount.`;
+  message += generateLedgerSummary(params.loan);
+  message += `\n\n- FinTech Vault Management`;
   return message;
 }
 
-/**
- * LOAN APPROVED - Sent when application is approved
- */
-export function generateLoanApproved(params: {
-  clientName: string;
-  amount: number;
-  loan: LoanData;
-}): string {
-  const { clientName, amount, loan } = params;
-  
-  let message = `LOAN APPROVED ✅
-
-Hello ${clientName},
-
-Great news! Your loan application for ${formatCurrency(amount)} has been officially APPROVED. Please prepare to review and sign your contract.`;
-
-  // Append Ledger Summary
-  message += generateLedgerSummary(loan);
-
-  message += `\n- Company Manager`;
-
+export function generateOverdueNotice(params: { clientName: string; periodNumber: number; daysLate: number; baseAmount: number; discountAmount: number; penaltyAmount: number; totalAmount: number; dueDate: Date | string; loan: LoanData; }): string {
+  let message = `🚨 URGENT: ACCOUNT OVERDUE 🚨\n\nHello ${params.clientName},\n\nYour payment for Installment #${params.periodNumber} is currently OVERDUE by ${params.daysLate} days.\n\n⚠️ PENALTY & DISCOUNT FORFEITURE:\nBecause this payment is late, your Good Payer Discount has been strictly REVOKED.\n- Base Installment: ${formatCurrency(params.baseAmount)}\n- Revoked Discount: + ${formatCurrency(params.discountAmount)}\n- Applied Late Fees: + ${formatCurrency(params.penaltyAmount)}\n----------------------------------\n📌 TOTAL OVERDUE FOR INST #${params.periodNumber}: ${formatCurrency(params.totalAmount)}\n📅 MISSED DUE DATE: ${formatShortDate(params.dueDate)}`;
+  message += generateLedgerSummary(params.loan);
+  message += `\n\nPlease settle your overdue balance immediately to prevent account escalation.\n\n- FinTech Vault Management`;
   return message;
 }
 
-/**
- * LOAN FULLY PAID - Account cleared notification
- */
-export function generateLoanFullyPaid(params: {
-  clientName: string;
-  totalLoanAmount: number;
-  loan: LoanData;
-}): string {
-  const { clientName, totalLoanAmount, loan } = params;
-  
-  let message = `ACCOUNT CLEARED 🎉
-
-Congratulations ${clientName}!
-
-Your loan of ${formatCurrency(totalLoanAmount)} is now FULLY PAID.
-
-Thank you for being a highly valued client. You are now eligible to apply for your next capital advance.`;
-
-  // Append Ledger Summary
-  message += generateLedgerSummary(loan);
-
-  message += `\n- Company Manager`;
-
+export function generatePenaltyAppliedNotice(params: { clientName: string; periodNumber: number; penaltyAmount: number; newTotalAmount: number; loan: LoanData; }): string {
+  let message = `⛔ PENALTY APPLIED ⛔\n\nHello ${params.clientName},\n\nThis is an official notice that a late penalty of ${formatCurrency(params.penaltyAmount)} has been added to Installment #${params.periodNumber}.\n\n📌 NEW TOTAL DUE FOR INST #${params.periodNumber}: ${formatCurrency(params.newTotalAmount)}`;
+  message += generateLedgerSummary(params.loan);
+  message += `\n\n- FinTech Vault Management`;
   return message;
 }
 
-/**
- * DUE TODAY - Same day reminder
- */
-export function generateDueTodayNotice(params: {
-  clientName: string;
-  amount: number;
-  periodNumber: number;
-  loan: LoanData;
-}): string {
-  const { clientName, amount, periodNumber, loan } = params;
-  
-  let message = `TODAY'S REMINDER 🔔
+export function generatePaymentReceipt(params: { clientName: string; amount: number; paymentDate: Date | string; periodNumber: number; loan: LoanData; }): string {
+  let message = `🧾 OFFICIAL PAYMENT RECEIPT 🧾\n\nHello ${params.clientName},\n\nWe have successfully received your payment of ${formatCurrency(params.amount)} for Installment #${params.periodNumber} on ${formatShortDate(params.paymentDate)}. Thank you for your payment!`;
+  message += generateLedgerSummary(params.loan);
+  message += `\n\n- FinTech Vault Management`;
+  return message;
+}
 
-Hello ${clientName},
-
-Your payment of ${formatCurrency(amount)} for Installment #${periodNumber} is DUE TODAY.
-
-Please settle your account to maintain your Good Payer discount.`;
-
-  // Append Ledger Summary
-  message += generateLedgerSummary(loan);
-
-  message += `\n- Company Manager`;
-
+export function generateLoanFullyPaid(params: { clientName: string; totalLoanAmount: number; loan: LoanData; }): string {
+  let message = `🎉 ACCOUNT FULLY CLEARED 🎉\n\nCongratulations ${params.clientName}!\n\nYour loan of ${formatCurrency(params.totalLoanAmount)} is now FULLY PAID. Thank you for being a highly valued client. You are now eligible to apply for your next capital advance.`;
+  message += generateLedgerSummary(params.loan);
+  message += `\n\n- FinTech Vault Management`;
   return message;
 }
 
 // ============================================================================
-// SIMPLIFIED GENERATORS (for dashboard alerts without full loan context)
+// FB NOTIFICATION BUTTON LOGIC
 // ============================================================================
 
-/**
- * Simplified overdue notice - for dashboard alerts without full loan context
- */
-export function generateSimpleOverdueNotice(params: {
-  clientName: string;
-  amount: number;
-  daysLate: number;
-  periodNumber: number;
-  penaltyAmount?: number; // DYNAMIC penalty
-}): string {
-  const { clientName, amount, daysLate, periodNumber, penaltyAmount } = params;
-  
-  let message = `URGENT: Hello ${clientName}, your payment of ${formatCurrency(amount)} for Installment #${periodNumber} is ${daysLate} day${daysLate > 1 ? 's' : ''} OVERDUE.`;
-
-  if (penaltyAmount && penaltyAmount > 0) {
-    message += `\n\n⚠️ A late penalty of ${formatCurrency(penaltyAmount)} has been applied.`;
-  }
-
-  message += `\n\nPlease contact your assigned officer immediately to settle your account and avoid further penalties.
-
-- Company Manager`;
-
-  return message;
-}
-
-/**
- * Simplified due today notice - for dashboard alerts without full loan context
- */
-export function generateSimpleDueTodayNotice(params: {
-  clientName: string;
-  amount: number;
-  periodNumber: number;
-}): string {
-  const { clientName, amount, periodNumber } = params;
-  
-  return `TODAY'S REMINDER: Hello ${clientName}, your payment of ${formatCurrency(amount)} for Installment #${periodNumber} is DUE TODAY.
-
-Please settle your account to maintain your Good Payer discount.
-
-- Company Manager`;
-}
-
-/**
- * ACCOUNT STATUS UPDATE - General notification with ledger
- */
-export function generateAccountStatusUpdate(params: {
-  clientName: string;
-  loan: LoanData;
-}): string {
-  const { clientName, loan } = params;
-  
-  let message = `ACCOUNT STATUS UPDATE 📊
-
-Hello ${clientName},
-
-This is a routine update regarding your active account with FinTech Vault.`;
-
-  // Append Ledger Summary
-  message += generateLedgerSummary(loan);
-
-  message += `\n- Company Manager`;
-
-  return message;
-}
-
-// ============================================================================
-// FB NOTIFICATION HANDLER
-// ============================================================================
-
-/**
- * Generic FB notification handler
- * Copies message to clipboard and opens Facebook profile directly
- * NO m.me logic - opens the raw fbProfileUrl as stored in database
- */
 export function sendFBNotification(params: {
   message: string;
   clientName: string;
@@ -422,43 +174,21 @@ export function sendFBNotification(params: {
   const { message, clientName, fbProfileUrl, messengerId, onCopy } = params;
 
   try {
-    // Step 1: Copy message to clipboard
     navigator.clipboard.writeText(message);
-
-    // Step 2: Determine profile URL - use raw URL directly, no m.me construction
     let profileUrl: string;
 
     if (fbProfileUrl) {
-      // Use the stored URL exactly as-is
-      if (fbProfileUrl.startsWith('http://') || fbProfileUrl.startsWith('https://')) {
-        profileUrl = fbProfileUrl;
-      } else {
-        // Add https prefix if missing
-        profileUrl = `https://${fbProfileUrl}`;
-      }
+      profileUrl = (fbProfileUrl.startsWith('http://') || fbProfileUrl.startsWith('https://')) ? fbProfileUrl : `https://${fbProfileUrl}`;
     } else if (messengerId) {
-      // Fallback to messengerId field - use as profile URL, not m.me
-      if (messengerId.startsWith('http://') || messengerId.startsWith('https://')) {
-        profileUrl = messengerId;
-      } else {
-        profileUrl = `https://${messengerId}`;
-      }
+      profileUrl = (messengerId.startsWith('http://') || messengerId.startsWith('https://')) ? messengerId : `https://${messengerId}`;
     } else {
-      // Last resort: search Facebook for client name
       profileUrl = `https://www.facebook.com/search/people/?q=${encodeURIComponent(clientName)}`;
     }
 
-    // Step 3: Open profile in new tab
     window.open(profileUrl, '_blank');
-
-    // Callback
     if (onCopy) onCopy();
-
-    return { success: true, message: `Message copied! Facebook profile opened for ${clientName}.` };
+    return { success: true, message: `Message copied!` };
   } catch (error) {
     return { success: false, message: 'Failed to copy message.' };
   }
 }
-
-// Export currency formatter for use in other components
-export { formatCurrency, formatDate, formatShortDate };
