@@ -19,7 +19,7 @@ interface AlertBase {
   penaltyFee: number;
   fbProfileUrl: string | null;
   messengerId: string | null;
-  loan: any; // Full ledger data
+  loan: any; 
 }
 
 interface OverdueAlert extends AlertBase { daysLate: number; }
@@ -51,12 +51,10 @@ const MessengerIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.092.301 2.246.464 3.443.464 6.627 0 12-4.974 12-11.111S18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.26L19.752 8l-6.561 6.963z"/></svg>
 );
 
-// Unified Communication Buttons using Full Force Ledger
 function CommunicationButtons({ alert, type }: { alert: any, type: 'OVERDUE' | 'DUE_TODAY' | 'UPCOMING' }) {
   const [copied, setCopied] = useState(false);
   const formattedPhone = formatPhone(alert.phone);
   
-  // Generate the Full Force Message based on the status
   let message = "";
   if (type === 'OVERDUE') {
     const baseAmount = alert.expectedAmount;
@@ -97,37 +95,25 @@ function CommunicationButtons({ alert, type }: { alert: any, type: 'OVERDUE' | '
   };
 
   return (
-    <div className="flex items-center gap-1">
-      {/* FB Notify Button */}
-      <button
-        onClick={handleFBClick}
-        className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${
-          copied ? 'bg-emerald-600/20 border border-emerald-500/30 text-emerald-400' : 'bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-400'
-        }`}
-        title="Copy message & open Facebook profile"
-      >
-        <MessengerIcon className="w-3.5 h-3.5" />
-        {copied ? '✓' : 'FB'}
+    <div className="flex items-center gap-1.5">
+      <button onClick={handleFBClick} className={`flex items-center justify-center p-2 text-xs font-bold rounded-xl transition-all shadow-sm ${copied ? 'bg-emerald-500 text-white' : 'bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600/40 hover:text-white'}`} title="FB Notify">
+        <MessengerIcon className="w-4 h-4" />
       </button>
 
-      {/* WhatsApp & SMS */}
-      {alert.phone ? (
+      {alert.phone && (
         <>
-          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/30 text-emerald-400 text-xs font-bold rounded-lg transition-all whitespace-nowrap" title="Send WhatsApp notice">
-            <WhatsAppIcon className="w-3.5 h-3.5" /> WA
+          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center p-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500 hover:text-white text-xs font-bold rounded-xl transition-all shadow-sm" title="WhatsApp">
+            <WhatsAppIcon className="w-4 h-4" />
           </a>
-          <a href={smsUrl} className="flex items-center gap-1 px-2.5 py-1.5 bg-zinc-700/50 hover:bg-zinc-700 border border-zinc-600 text-zinc-400 text-xs font-bold rounded-lg transition-all whitespace-nowrap" title="Send SMS notice">
-            <Phone className="w-3.5 h-3.5" /> SMS
+          <a href={smsUrl} className="flex items-center justify-center p-2 bg-slate-700/50 border border-slate-600 text-slate-300 hover:bg-slate-600 hover:text-white text-xs font-bold rounded-xl transition-all shadow-sm" title="SMS">
+            <Phone className="w-4 h-4" />
           </a>
         </>
-      ) : (
-        <span className="text-xs text-zinc-500 italic px-2">No phone</span>
       )}
     </div>
   );
 }
 
-// Penalty Enforcement Button Component
 function PenaltyButton({ installmentId, loanId, clientName, onPenaltyApplied }: { installmentId: number; loanId: number; clientName: string; onPenaltyApplied: () => void; }) {
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
@@ -158,12 +144,12 @@ function PenaltyButton({ installmentId, loanId, clientName, onPenaltyApplied }: 
   };
 
   if (applied) {
-    return <span className="flex items-center gap-1 px-3 py-2 bg-zinc-800 border border-zinc-700 text-zinc-500 text-xs font-bold rounded-lg whitespace-nowrap cursor-not-allowed">✓ Penalty Applied</span>;
+    return <span className="flex items-center gap-1 px-3 py-2 bg-slate-800 border border-slate-700 text-slate-500 text-[10px] uppercase font-black tracking-wider rounded-xl whitespace-nowrap cursor-not-allowed">✓ Penalty Applied</span>;
   }
 
   return (
-    <button onClick={handleApplyPenalty} disabled={applying} className="flex items-center gap-1 px-3 py-2 bg-red-600/20 hover:bg-red-600/40 border border-red-500/50 text-red-400 text-xs font-bold rounded-lg transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed" title="Apply ₱500 late fee and revoke 4% Good Payer Discount">
-      {applying ? <><span className="animate-spin w-3 h-3 border border-red-400 border-t-transparent rounded-full"></span></> : <><span>⚠️</span> Apply Penalty</>}
+    <button onClick={handleApplyPenalty} disabled={applying} className="flex items-center gap-1.5 px-3 py-2 bg-rose-500/10 hover:bg-rose-500/30 border border-rose-500/30 text-rose-400 text-[10px] uppercase font-black tracking-wider rounded-xl transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed" title="Apply ₱500 late fee and revoke discount">
+      {applying ? <span className="animate-spin w-3 h-3 border-2 border-rose-400 border-t-transparent rounded-full"></span> : <span>⚠️ ENFORCE PENALTY</span>}
     </button>
   );
 }
@@ -178,43 +164,52 @@ export default function DelinquencyAlerts({ overdue, dueToday, upcoming }: Delin
   };
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-          <span className="text-lg">🎯</span> Proactive HUD
+    <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-6 shadow-2xl font-sans font-medium text-slate-200">
+      <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
+        <h2 className="text-base font-black text-white uppercase tracking-widest flex items-center gap-3">
+          <span className="text-2xl drop-shadow-md">🎯</span> PROACTIVE HUD
         </h2>
-        {totalAlerts > 0 && <span className="bg-zinc-700 text-zinc-300 text-xs px-3 py-1 rounded-full font-bold">{totalAlerts} total</span>}
+        {totalAlerts > 0 && <span className="bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs px-4 py-1.5 rounded-full font-black tracking-wider shadow-[0_0_15px_rgba(6,182,212,0.2)]">{totalAlerts} PENDING</span>}
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* 🔴 CRITICAL - OVERDUE */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-            <h3 className="text-xs font-bold text-rose-400 uppercase tracking-wider">Critical — Overdue</h3>
-            {overdue.length > 0 && <span className="bg-rose-500/20 text-rose-400 text-xs px-2 py-0.5 rounded-full font-bold">{overdue.length}</span>}
+        <div className="bg-gradient-to-br from-rose-950/20 to-transparent p-5 rounded-2xl border border-rose-900/30">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+            </div>
+            <h3 className="text-xs font-black text-rose-400 uppercase tracking-widest">Critical — Overdue</h3>
+            {overdue.length > 0 && <span className="bg-rose-500 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black shadow-md">{overdue.length}</span>}
           </div>
 
           {overdue.length === 0 ? (
-            <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-3"><p className="text-emerald-400 text-sm font-medium flex items-center gap-2"><span>✓</span> No overdue accounts</p></div>
+            <div className="bg-slate-800/30 rounded-xl p-4 flex items-center gap-3"><span className="text-emerald-400 text-xl">✓</span> <p className="text-slate-300 text-sm font-bold tracking-wide">No overdue accounts.</p></div>
           ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
               {overdue.map((item) => (
-                <div key={`overdue-${item.id}`} className="flex items-center justify-between p-3 bg-rose-500/5 border border-rose-500/20 rounded-xl hover:bg-rose-500/10 hover:border-rose-500/30 transition-all group">
-                  <Link href={`/payments?clientId=${item.clientId}`} className="flex-1 min-w-0">
-                    <p className="font-bold text-rose-400 truncate">{item.clientName}</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">TXN-{item.loanId.toString().padStart(4, '0')} · Period {item.period}</p>
-                  </Link>
-                  <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                    <div className="text-right">
-                      <p className="font-bold text-white">{formatCurrency(item.expectedAmount)}</p>
-                      <p className="text-xs text-rose-400 font-medium">{item.daysLate} {item.daysLate === 1 ? 'day' : 'days'} late</p>
+                <div key={`overdue-${item.id}`} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-slate-950/50 hover:bg-slate-900 border-l-4 border-l-rose-500 border-t border-r border-b border-slate-800 rounded-xl transition-all group shadow-sm">
+                  <div className="mb-3 md:mb-0">
+                    <Link href={`/payments?clientId=${item.clientId}`} className="block hover:underline decoration-rose-500/50 decoration-2 underline-offset-4">
+                      <p className="font-black text-rose-400 text-lg tracking-tight">{item.clientName}</p>
+                    </Link>
+                    <div className="flex gap-2 items-center mt-1">
+                      <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider">TXN-{item.loanId.toString().padStart(4, '0')}</span>
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Period {item.period}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <div className="text-left md:text-right flex-1 md:flex-none">
+                      <p className="font-black text-white text-lg tracking-tight">{formatCurrency(item.expectedAmount)}</p>
+                      <p className="text-[10px] text-rose-400 font-black uppercase tracking-widest">{item.daysLate} {item.daysLate === 1 ? 'day' : 'days'} late</p>
                     </div>
                     
-                    <CommunicationButtons alert={item} type="OVERDUE" />
-                    
-                    <PenaltyButton installmentId={item.id} loanId={item.loanId} clientName={item.clientName} onPenaltyApplied={handlePenaltyApplied} />
-                    <Link href={`/payments?clientId=${item.clientId}`} className="bg-rose-500 text-white text-xs px-3 py-2 rounded-lg font-bold group-hover:bg-rose-400 transition-colors whitespace-nowrap">Process</Link>
+                    <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+                      <CommunicationButtons alert={item} type="OVERDUE" />
+                      <PenaltyButton installmentId={item.id} loanId={item.loanId} clientName={item.clientName} onPenaltyApplied={handlePenaltyApplied} />
+                      <Link href={`/payments?clientId=${item.clientId}`} className="bg-rose-600 text-white text-xs px-4 py-2.5 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-rose-900/30 hover:bg-rose-500 hover:shadow-rose-900/50 transition-all flex items-center justify-center whitespace-nowrap">PROCESS</Link>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -223,31 +218,36 @@ export default function DelinquencyAlerts({ overdue, dueToday, upcoming }: Delin
         </div>
 
         {/* 🟡 DUE TODAY */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
-            <h3 className="text-xs font-bold text-yellow-400 uppercase tracking-wider">Due Today</h3>
-            {dueToday.length > 0 && <span className="bg-yellow-500/20 text-yellow-400 text-xs px-2 py-0.5 rounded-full font-bold">{dueToday.length}</span>}
+        <div className="bg-gradient-to-br from-amber-950/20 to-transparent p-5 rounded-2xl border border-amber-900/30">
+          <div className="flex items-center gap-3 mb-5">
+            <span className="w-3 h-3 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]"></span>
+            <h3 className="text-xs font-black text-amber-400 uppercase tracking-widest">Due Today</h3>
+            {dueToday.length > 0 && <span className="bg-amber-500 text-slate-900 text-[10px] px-2.5 py-0.5 rounded-full font-black shadow-md">{dueToday.length}</span>}
           </div>
 
           {dueToday.length === 0 ? (
-            <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-3"><p className="text-emerald-400 text-sm font-medium flex items-center gap-2"><span>✓</span> No payments due today</p></div>
+            <div className="bg-slate-800/30 rounded-xl p-4 flex items-center gap-3"><span className="text-emerald-400 text-xl">✓</span> <p className="text-slate-300 text-sm font-bold tracking-wide">No payments due today.</p></div>
           ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
               {dueToday.map((item) => (
-                <div key={`duetoday-${item.id}`} className="flex items-center justify-between p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-xl hover:bg-yellow-500/10 hover:border-yellow-500/30 transition-all group">
-                  <Link href={`/payments?clientId=${item.clientId}`} className="flex-1 min-w-0">
-                    <p className="font-bold text-yellow-400 truncate">{item.clientName}</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">TXN-{item.loanId.toString().padStart(4, '0')} · Period {item.period}</p>
-                  </Link>
-                  <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                    <div className="text-right">
-                      <p className="font-bold text-white">{formatCurrency(item.expectedAmount)}</p>
+                <div key={`duetoday-${item.id}`} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-slate-950/50 hover:bg-slate-900 border-l-4 border-l-amber-500 border-t border-r border-b border-slate-800 rounded-xl transition-all group shadow-sm">
+                  <div className="mb-3 md:mb-0">
+                    <Link href={`/payments?clientId=${item.clientId}`} className="block hover:underline decoration-amber-500/50 decoration-2 underline-offset-4">
+                      <p className="font-black text-amber-400 text-lg tracking-tight">{item.clientName}</p>
+                    </Link>
+                    <div className="flex gap-2 items-center mt-1">
+                      <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider">TXN-{item.loanId.toString().padStart(4, '0')}</span>
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Period {item.period}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="text-left md:text-right flex-1 md:flex-none">
+                      <p className="font-black text-white text-lg tracking-tight">{formatCurrency(item.expectedAmount)}</p>
+                      <p className="text-[10px] text-amber-500 font-black uppercase tracking-widest">DUE BY MIDNIGHT</p>
                     </div>
                     
                     <CommunicationButtons alert={item} type="DUE_TODAY" />
-                    
-                    <Link href={`/payments?clientId=${item.clientId}`} className="bg-yellow-500 text-black text-xs px-3 py-2 rounded-lg font-bold group-hover:bg-yellow-400 transition-colors whitespace-nowrap">Process</Link>
+                    <Link href={`/payments?clientId=${item.clientId}`} className="bg-amber-500 text-slate-900 text-xs px-4 py-2.5 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-amber-900/30 hover:bg-amber-400 hover:shadow-amber-900/50 transition-all flex items-center justify-center whitespace-nowrap">PROCESS</Link>
                   </div>
                 </div>
               ))}
@@ -256,32 +256,36 @@ export default function DelinquencyAlerts({ overdue, dueToday, upcoming }: Delin
         </div>
 
         {/* 🔵 UPCOMING RADAR */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-            <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider">Upcoming Radar — Next 7 Days</h3>
-            {upcoming.length > 0 && <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded-full font-bold">{upcoming.length}</span>}
+        <div className="bg-gradient-to-br from-blue-950/20 to-transparent p-5 rounded-2xl border border-blue-900/30">
+          <div className="flex items-center gap-3 mb-5">
+            <span className="w-3 h-3 rounded-full bg-blue-400"></span>
+            <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest">Upcoming Radar — Next 7 Days</h3>
+            {upcoming.length > 0 && <span className="bg-blue-500 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black shadow-md">{upcoming.length}</span>}
           </div>
 
           {upcoming.length === 0 ? (
-            <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-3"><p className="text-emerald-400 text-sm font-medium flex items-center gap-2"><span>✓</span> No upcoming payments this week</p></div>
+            <div className="bg-slate-800/30 rounded-xl p-4 flex items-center gap-3"><span className="text-emerald-400 text-xl">✓</span> <p className="text-slate-300 text-sm font-bold tracking-wide">No upcoming payments this week.</p></div>
           ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
               {upcoming.map((item) => (
-                <div key={`upcoming-${item.id}`} className="flex items-center justify-between p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl hover:bg-blue-500/10 hover:border-blue-500/30 transition-all group">
-                  <Link href={`/payments?clientId=${item.clientId}`} className="flex-1 min-w-0">
-                    <p className="font-bold text-blue-400 truncate">{item.clientName}</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">TXN-{item.loanId.toString().padStart(4, '0')} · Period {item.period}</p>
-                  </Link>
-                  <div className="flex items-center gap-3 ml-4 flex-shrink-0">
-                    <div className="text-right">
-                      <p className="font-bold text-white">{formatCurrency(item.expectedAmount)}</p>
-                      <p className="text-xs text-blue-400">Due {formatDate(item.dueDate)}</p>
+                <div key={`upcoming-${item.id}`} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-slate-950/50 hover:bg-slate-900 border-l-4 border-l-blue-500 border-t border-r border-b border-slate-800 rounded-xl transition-all group shadow-sm">
+                  <div className="mb-3 md:mb-0">
+                    <Link href={`/payments?clientId=${item.clientId}`} className="block hover:underline decoration-blue-500/50 decoration-2 underline-offset-4">
+                      <p className="font-black text-blue-400 text-lg tracking-tight">{item.clientName}</p>
+                    </Link>
+                    <div className="flex gap-2 items-center mt-1">
+                      <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider">TXN-{item.loanId.toString().padStart(4, '0')}</span>
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Period {item.period}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="text-left md:text-right flex-1 md:flex-none">
+                      <p className="font-black text-white text-lg tracking-tight">{formatCurrency(item.expectedAmount)}</p>
+                      <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest">DUE: {formatDate(item.dueDate)}</p>
                     </div>
 
                     <CommunicationButtons alert={item} type="UPCOMING" />
-
-                    <Link href={`/payments?clientId=${item.clientId}`} className="bg-blue-500/20 border border-blue-500/30 text-blue-400 text-xs px-3 py-2 rounded-lg font-bold hover:bg-blue-500 hover:text-white transition-colors whitespace-nowrap">Process</Link>
+                    <Link href={`/payments?clientId=${item.clientId}`} className="bg-slate-800 border border-slate-700 text-slate-300 text-xs px-4 py-2.5 rounded-xl font-black uppercase tracking-widest shadow-lg hover:bg-slate-700 hover:text-white transition-all flex items-center justify-center whitespace-nowrap">PROCESS</Link>
                   </div>
                 </div>
               ))}
@@ -291,11 +295,12 @@ export default function DelinquencyAlerts({ overdue, dueToday, upcoming }: Delin
       </div>
 
       {totalAlerts === 0 && (
-        <div className="text-center py-6 border-t border-zinc-800 mt-6">
-          <p className="text-emerald-400 font-bold text-lg">✓ All Clear</p>
-          <p className="text-xs text-zinc-500 mt-1">No pending payments require attention</p>
+        <div className="text-center py-10 border-t border-slate-800 mt-8">
+          <p className="text-emerald-400 font-black text-2xl tracking-tight drop-shadow-[0_0_15px_rgba(52,211,153,0.4)]">ALL CLEAR</p>
+          <p className="text-sm font-bold tracking-wide text-slate-500 mt-2 uppercase">No pending actions required.</p>
         </div>
       )}
     </div>
   );
 }
+
