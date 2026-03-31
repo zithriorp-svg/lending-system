@@ -115,25 +115,27 @@ export default function LoginClient({ showSeedButton }: LoginClientProps) {
           </button>
         </form>
 
-        {/* MUST BE OUTSIDE THE </form> TAG */}
-        <div className="mt-8 flex flex-col items-center space-y-4 border-t border-zinc-800 pt-6 w-full max-w-sm mx-auto">
+        {/* CRITICAL: ENSURE THIS IS PHYSICALLY OUTSIDE AND BELOW THE </form> TAG */}
+        <div className="mt-8 flex flex-col items-center space-y-4 border-t border-zinc-800 pt-6 w-full max-w-sm mx-auto relative z-50">
           <p className="text-xs text-zinc-500 uppercase tracking-widest">Select Portal</p>
           <div className="flex w-full justify-between gap-4">
-            <a
-              href="/agent-portal"
-              className="flex-1 flex flex-col items-center justify-center py-3 px-2 bg-transparent border border-zinc-700/50 rounded-lg hover:bg-zinc-800 hover:border-zinc-500 transition-all cursor-pointer"
+            <button
+              type="button"
+              onPointerDown={() => window.location.assign('/agent-portal')}
+              className="flex-1 flex flex-col items-center justify-center py-3 px-2 bg-transparent border border-zinc-700/50 rounded-lg hover:bg-zinc-800 hover:border-zinc-500 transition-all cursor-pointer touch-manipulation focus:outline-none"
             >
               <span className="text-xl mb-1">💼</span>
               <span className="text-xs font-medium text-zinc-300">Agent Gateway</span>
-            </a>
+            </button>
 
-            <a
-              href="/portal"
-              className="flex-1 flex flex-col items-center justify-center py-3 px-2 bg-transparent border border-zinc-700/50 rounded-lg hover:bg-zinc-800 hover:border-zinc-500 transition-all cursor-pointer"
+            <button
+              type="button"
+              onPointerDown={() => window.location.assign('/portal')}
+              className="flex-1 flex flex-col items-center justify-center py-3 px-2 bg-transparent border border-zinc-700/50 rounded-lg hover:bg-zinc-800 hover:border-zinc-500 transition-all cursor-pointer touch-manipulation focus:outline-none"
             >
               <span className="text-xl mb-1">🏛️</span>
               <span className="text-xs font-medium text-zinc-300">Client Vault</span>
-            </a>
+            </button>
           </div>
         </div>
 
