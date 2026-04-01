@@ -13,7 +13,7 @@ import AgentPortalClient from "@/app/agent-portal/AgentPortalClient";
 
 export const dynamic = "force-dynamic";
 
-// 🚀 BULLETPROOF SERIALIZATION: Eliminates all "NaN" errors for FB copy-paste
+// 🚀 BULLETPROOF SERIALIZATION
 const serializeLoan = (loan: any) => {
   const safeTotalRepayment = Number(loan.totalRepayment || 0);
   const computedTotalPaid = loan.installments?.reduce((sum: number, inst: any) => sum + Number(inst.amountPaid || 0), 0) || 0;
@@ -58,7 +58,7 @@ export default async function Dashboard() {
   const portfolios = portfolioRecords.map(p => ({ id: p.id, name: p.name }));
 
   // ============================================================================
-  // 🚀 AGENT IDENTITY PROTOCOL: Find the exact agent who just logged in
+  // 🚀 AGENT IDENTITY PROTOCOL
   // ============================================================================
   let agentData = null;
 
@@ -78,7 +78,6 @@ export default async function Dashboard() {
       });
     }
 
-    // Fallback ONLY if they type the generic 'agent' test account
     if (!agentData) {
       agentData = await prisma.agent.findFirst({
         include: { loans: { where: { status: 'ACTIVE' }, include: { client: true, installments: { orderBy: { period: 'asc' } } } }, commissions: true }
@@ -96,12 +95,40 @@ export default async function Dashboard() {
     installments: { orderBy: { period: 'asc' } as const }
   };
 
-  // 🔒 STRICT SECURITY: If it is an Agent, ONLY fetch alerts for their exact ID
   const agentFilter = (!isAdmin && agentData) ? { agentId: agentData.id } : {};
 
-  const overdueInstallments = await prisma.loanInstallment.findMany({ where: { status: "PENDING", dueDate: { lt: today }, loan: { portfolio, ...agentFilter } }, include: { loan: { include: fullLoanInclude } }, orderBy: { dueDate: 'asc' } });
-  const dueTodayInstallments = await prisma.loanInstallment.findMany({ where: { status: "PENDING", dueDate: { gte: today, lte: todayEnd }, loan: { portfolio, ...agentFilter } }, include: { loan: { include: fullLoanInclude } }, orderBy: { dueDate: 'asc' } });
-  const upcomingInstallments = await prisma.loanInstallment.findMany({ where: { status: "PENDING", dueDate: { gt: todayEnd, lte: nextWeek }, loan: { portfolio, ...agentFilter } }, include: { loan: { include: fullLoanInclude } }, orderBy: { dueDate: 'asc' } });
+  // ============================================================================
+  // 🎯 WIDE-SWEEP RADAR UPGRADE: Now catches PENDING, LATE, MISSED, and PARTIAL
+  // ============================================================================
+  const overdueInstallments = await prisma.loanInstallment.findMany({ 
+    where: { 
+      status: { in: ["PENDING", "LATE", "MISSED", "PARTIAL"] }, 
+      dueDate: { lt: today }, 
+      loan: { portfolio, ...agentFilter } 
+    }, 
+    include: { loan: { include: fullLoanInclude } }, 
+    orderBy: { dueDate: 'asc' } 
+  });
+
+  const dueTodayInstallments = await prisma.loanInstallment.findMany({ 
+    where: { 
+      status: { in: ["PENDING", "PARTIAL"] }, 
+      dueDate: { gte: today, lte: todayEnd }, 
+      loan: { portfolio, ...agentFilter } 
+    }, 
+    include: { loan: { include: fullLoanInclude } }, 
+    orderBy: { dueDate: 'asc' } 
+  });
+
+  const upcomingInstallments = await prisma.loanInstallment.findMany({ 
+    where: { 
+      status: { in: ["PENDING", "PARTIAL"] }, 
+      dueDate: { gt: todayEnd, lte: nextWeek }, 
+      loan: { portfolio, ...agentFilter } 
+    }, 
+    include: { loan: { include: fullLoanInclude } }, 
+    orderBy: { dueDate: 'asc' } 
+  });
 
   const getDaysLate = (dueDate: Date): number => { return Math.floor((today.getTime() - new Date(dueDate).getTime()) / (1000 * 60 * 60 * 24)); };
 
@@ -110,20 +137,19 @@ export default async function Dashboard() {
     clientName: `${i.loan.client.firstName} ${i.loan.client.lastName}`, firstName: i.loan.client.firstName, phone: i.loan.client.phone || '',
     agentName: i.loan.agent?.name || null, daysLate: getDaysLate(i.dueDate), penaltyFee: Number(i.penaltyFee) || 0,
     fbProfileUrl: i.loan.client.application?.fbProfileUrl || null, messengerId: i.loan.client.application?.messengerId || null,
-    loan: serializeLoan(i.loan) // The bulletproofed loan is passed here
+    loan: serializeLoan(i.loan)
   }));
 
   const alerts = { overdue: mapAlerts(overdueInstallments), dueToday: mapAlerts(dueTodayInstallments), upcoming: mapAlerts(upcomingInstallments) };
 
   // ============================================================================
-  // 🚀 DEPLOY THE TACTICAL HUD FOR THE IDENTIFIED AGENT
+  // 🚀 DEPLOY THE TACTICAL HUD
   // ============================================================================
   if (!isAdmin && agentData) {
     let totalRiskLiability = 0, totalCollected = 0, pendingCommission = 0, totalLifetimeEarnings = 0;
     agentData.commissions.forEach(comm => { if (!comm.isPaidOut) pendingCommission += Number(comm.amount); totalLifetimeEarnings += Number(comm.amount); });
     
     const activeClients = agentData.loans.map(loan => {
-      // Bulletproof Matrix Chart Math
       const computedTotalPaid = loan.installments?.reduce((sum: number, inst: any) => sum + Number(inst.amountPaid || 0), 0) || 0;
       const safeTotalPaid = Number(loan.totalPaid || computedTotalPaid);
       const safeRemaining = Number(loan.remainingBalance || (Number(loan.totalRepayment || 0) - safeTotalPaid));
@@ -131,8 +157,9 @@ export default async function Dashboard() {
       totalRiskLiability += safeRemaining; 
       totalCollected += safeTotalPaid;
 
-      const nextPending = loan.installments.find(i => i.status === "PENDING" || i.status === "PARTIAL");
+      const nextPending = loan.installments.find(i => i.status === "PENDING" || i.status === "PARTIAL" || i.status === "LATE" || i.status === "MISSED");
       const daysLate = nextPending && new Date(nextPending.dueDate) < today ? Math.floor((today.getTime() - new Date(nextPending.dueDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+      
       return {
         loanId: loan.id, clientId: loan.clientId, clientName: `${loan.client.firstName} ${loan.client.lastName}`, firstName: loan.client.firstName,
         phone: loan.client.phone || '', originalPrincipal: Number(loan.principal), remainingBalance: safeRemaining,
@@ -153,7 +180,7 @@ export default async function Dashboard() {
   }
 
   // ============================================================================
-  // NORMAL MASTER ADMIN DASHBOARD (BELOW)
+  // NORMAL MASTER ADMIN DASHBOARD
   // ============================================================================
 
   const ledgers = await prisma.ledger.findMany({ where: { portfolio }, orderBy: { createdAt: 'desc' }, include: { loan: { include: { client: true } }, payment: true } });
