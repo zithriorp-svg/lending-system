@@ -276,43 +276,6 @@ model AuditLog {
   @@index([createdAt(sort: Desc)])
 }
 
-// Agent Application - Pending agent recruitment requests
-model AgentApplication {
-  id               Int       @id @default(autoincrement())
-  createdAt        DateTime  @default(now())
-  status           String    @default("PENDING") // "PENDING", "APPROVED", "REJECTED"
-  
-  // Personal Information
-  firstName        String
-  lastName         String
-  phone            String
-  address          String?
-  birthDate        DateTime?
-  
-  // Territory & Operational Capacity
-  territory        String?   // Primary operation area (City/Barangay)
-  networkSize      Int?      // Estimated network size
-  employment       String?   // Current employment/business
-  
-  // Forensic Verification
-  selfieUrl        String?   // Live selfie
-  idPhotoUrl       String?   // Valid government ID
-  clearanceUrl     String?   // NBI/Barangay clearance
-  
-  // Legal Compliance
-  digitalSignature String?   // Base64 signature image
-  
-  // Admin Review Notes
-  adminNotes       String?   // Notes from admin during review
-  reviewedAt       DateTime? // When admin reviewed
-  reviewedBy       Int?      // User ID of admin who reviewed
-
-  @@index([status])
-  @@index([createdAt(sort: Desc)])
-}
-
-
-
 // ==========================================
 // AGENT & CO-MAKER BINDING APPLICATIONS
 // ==========================================
