@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { generateLedgerSummary, type LoanData } from "@/utils/notifications";
 
-// 🚀 TROJAN HORSE: Importing the Master Payment Terminal directly into the Agent Portal
+// 🚀 IMPORTING THE MASTER TERMINAL SAFELY INTO THE AGENT ZONE
 import PaymentTerminal from "@/app/payments/PaymentTerminal";
 
 interface InstallmentForLedger {
@@ -89,9 +88,11 @@ function FBNotifyButton({ message, clientName, fbProfileUrl, messengerId }: { me
 // ============================================================================
 export default function AgentPortalClient({ agent }: { agent: AgentData }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [loggingOut, setLoggingOut] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // 🚀 THE ULTIMATE BYPASS STATE: This completely evades Next.js Routing
+  const [activePaymentClient, setActivePaymentClient] = useState<number | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -101,7 +102,18 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     try { await fetch('/api/agent-auth/logout', { method: 'POST' }); router.push('/agent-portal'); } catch (e) {} finally { setLoggingOut(false); }
   };
 
-  // HYDRATION ARMOR
+  const openTerminalForClient = (clientId: number) => {
+    // Softly updates the URL so the PaymentTerminal reads it on mount, without triggering a page reload
+    window.history.replaceState(null, '', `?clientId=${clientId}`);
+    setActivePaymentClient(clientId);
+  };
+
+  const closeTerminal = () => {
+    // Resets URL and closes terminal
+    window.history.replaceState(null, '', window.location.pathname);
+    setActivePaymentClient(null);
+  };
+
   if (!mounted) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
@@ -111,12 +123,8 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     );
   }
 
-  // 🚀 THE SECURITY BYPASS INTERCEPTOR 
-  // If the URL says "?action=pay", intercept the screen and show the Payment Engine directly!
-  const action = searchParams.get("action");
-  
-  if (action === "pay") {
-    // Format the agent's clients to match the Master Payment Terminal's requirements
+  // 🚀 IF AN AGENT CLICKS PROCESS, RENDER THE TERMINAL INSTEAD OF THE HUD
+  if (activePaymentClient) {
     const loanOptions = agent.activeClients.map(c => ({
       id: c.loanId,
       clientId: c.clientId,
@@ -130,16 +138,14 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
       <div className="min-h-screen bg-black p-2 md:p-4">
         <div className="max-w-4xl mx-auto space-y-4 pb-20 font-sans">
           <div className="flex justify-between items-center pt-2 pb-4 border-b border-zinc-800">
-            <Link
-              href="/agent-portal"
-              className="bg-emerald-900/50 hover:bg-emerald-800 border border-emerald-500/50 text-emerald-400 px-6 py-3 rounded-xl text-xs md:text-sm font-black uppercase tracking-widest transition-all shadow-lg"
+            <button
+              onClick={closeTerminal}
+              className="bg-emerald-900/50 hover:bg-emerald-800 border border-emerald-500/50 text-emerald-400 px-6 py-3 rounded-xl text-xs md:text-sm font-black uppercase tracking-widest transition-all shadow-lg flex items-center gap-2"
             >
               ← Return to Tactical HUD
-            </Link>
+            </button>
           </div>
-          
           <div className="bg-zinc-950 border border-zinc-800 rounded-2xl md:p-6 shadow-2xl">
-            {/* Deploying the core engine securely inside the portal */}
             <PaymentTerminal loans={loanOptions} portfolio="Agent Collection Zone" />
           </div>
         </div>
@@ -343,10 +349,10 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
                 </div>
                 
                 <div className="grid grid-cols-2 gap-2 mt-4">
-                  {/* 🚀 TROJAN HORSE: Route directly to the parameter bypass */}
-                  <Link href={`/agent-portal?action=pay&clientId=${client.clientId}`} className="flex items-center justify-center bg-rose-600 hover:bg-rose-500 text-white text-xs font-black uppercase tracking-wider py-3 rounded-xl transition-colors shadow-lg">
+                  {/* 🚀 THE BYPASS: Calling state instead of Link */}
+                  <button onClick={() => openTerminalForClient(client.clientId)} className="flex items-center justify-center bg-rose-600 hover:bg-rose-500 text-white text-xs font-black uppercase tracking-wider py-3 rounded-xl transition-colors shadow-lg w-full">
                     ⚡ Process Payment
-                  </Link>
+                  </button>
                   <FBNotifyButton message={generateOverdueMessage(client.clientName, client.nextDuePeriod || 1, client.nextDueDate || new Date(), client.daysLate, client.nextDueAmount || 0, client.loan)} clientName={client.clientName} fbProfileUrl={client.fbProfileUrl} messengerId={client.messengerId} />
                 </div>
               </div>
@@ -374,8 +380,8 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-black text-emerald-400 mr-2">{formatCurrency(client.nextDueAmount || 0)}</p>
-                    {/* 🚀 TROJAN HORSE: Route directly to the parameter bypass */}
-                    <Link href={`/agent-portal?action=pay&clientId=${client.clientId}`} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase rounded-lg transition-colors border border-zinc-700">Process</Link>
+                    {/* 🚀 THE BYPASS: Calling state instead of Link */}
+                    <button onClick={() => openTerminalForClient(client.clientId)} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase rounded-lg transition-colors border border-zinc-700">Process</button>
                   </div>
                </div>
              ))}
@@ -386,3 +392,4 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     </div>
   );
 }
+
