@@ -139,6 +139,11 @@ export default function DelinquencyAlerts({ overdue, dueToday, upcoming }: Delin
   const totalAlerts = overdue.length + dueToday.length + upcoming.length;
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // ACCORDION STATE
+  const [showOverdue, setShowOverdue] = useState(true);
+  const [showDueToday, setShowDueToday] = useState(true);
+  const [showUpcoming, setShowUpcoming] = useState(true);
+
   const handlePenaltyApplied = () => {
     setRefreshKey(prev => prev + 1);
     window.location.reload();
@@ -154,95 +159,121 @@ export default function DelinquencyAlerts({ overdue, dueToday, upcoming }: Delin
       <div className="space-y-6">
         {/* 🔴 CRITICAL - OVERDUE */}
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-            <h3 className="text-xs font-bold text-rose-400 uppercase tracking-wider">Critical — Overdue</h3>
-            {overdue.length > 0 && <span className="bg-rose-500/20 text-rose-400 text-xs px-2 py-0.5 rounded-full font-bold">{overdue.length}</span>}
+          <div 
+            className="flex items-center justify-between mb-3 cursor-pointer bg-zinc-800/30 p-2 rounded-lg hover:bg-zinc-800/50 transition-colors"
+            onClick={() => setShowOverdue(!showOverdue)}
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+              <h3 className="text-xs font-bold text-rose-400 uppercase tracking-wider">Critical — Overdue</h3>
+              {overdue.length > 0 && <span className="bg-rose-500/20 text-rose-400 text-xs px-2 py-0.5 rounded-full font-bold">{overdue.length}</span>}
+            </div>
+            <span className="text-zinc-500 text-xs font-bold px-2">{showOverdue ? '▼ HIDE' : '▶ SHOW'}</span>
           </div>
 
-          {overdue.length === 0 ? (
-            <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-3"><p className="text-emerald-400 text-sm font-medium flex items-center gap-2"><span>✓</span> No overdue accounts</p></div>
-          ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {overdue.map((item) => (
-                <div key={`overdue-${item.id}`} className="flex items-center justify-between p-3 bg-rose-500/5 border border-rose-500/20 rounded-xl hover:bg-rose-500/10 hover:border-rose-500/30 transition-all group">
-                  <Link href={`/payments?clientId=${item.clientId}`} className="flex-1 min-w-0">
-                    <p className="font-bold text-rose-400 truncate">{item.clientName}</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">TXN-{item.loanId.toString().padStart(4, '0')} · Period {item.period}</p>
-                  </Link>
-                  <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                    <div className="text-right">
-                      <p className="font-bold text-white">{formatCurrency(item.expectedAmount)}</p>
-                      <p className="text-xs text-rose-400 font-medium">{item.daysLate} {item.daysLate === 1 ? 'day' : 'days'} late</p>
+          {showOverdue && (
+            overdue.length === 0 ? (
+              <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-3"><p className="text-emerald-400 text-sm font-medium flex items-center gap-2"><span>✓</span> No overdue accounts</p></div>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {overdue.map((item) => (
+                  <div key={`overdue-${item.id}`} className="flex items-center justify-between p-3 bg-rose-500/5 border border-rose-500/20 rounded-xl hover:bg-rose-500/10 hover:border-rose-500/30 transition-all group">
+                    <Link href={`/payments?clientId=${item.clientId}`} className="flex-1 min-w-0">
+                      <p className="font-bold text-rose-400 truncate">{item.clientName}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">TXN-{item.loanId.toString().padStart(4, '0')} · Period {item.period}</p>
+                    </Link>
+                    <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                      <div className="text-right">
+                        <p className="font-bold text-white">{formatCurrency(item.expectedAmount)}</p>
+                        <p className="text-xs text-rose-400 font-medium">{item.daysLate} {item.daysLate === 1 ? 'day' : 'days'} late</p>
+                      </div>
+                      <CommunicationButtons alert={item} type="OVERDUE" />
+                      <PenaltyButton installmentId={item.id} loanId={item.loanId} clientName={item.clientName} onPenaltyApplied={handlePenaltyApplied} />
+                      <Link href={`/payments?clientId=${item.clientId}`} className="bg-rose-500 text-white text-xs px-3 py-2 rounded-lg font-bold group-hover:bg-rose-400 transition-colors whitespace-nowrap">Process</Link>
                     </div>
-                    <CommunicationButtons alert={item} type="OVERDUE" />
-                    <PenaltyButton installmentId={item.id} loanId={item.loanId} clientName={item.clientName} onPenaltyApplied={handlePenaltyApplied} />
-                    <Link href={`/payments?clientId=${item.clientId}`} className="bg-rose-500 text-white text-xs px-3 py-2 rounded-lg font-bold group-hover:bg-rose-400 transition-colors whitespace-nowrap">Process</Link>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
           )}
         </div>
 
         {/* 🟡 DUE TODAY */}
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
-            <h3 className="text-xs font-bold text-yellow-400 uppercase tracking-wider">Due Today</h3>
+          <div 
+            className="flex items-center justify-between mb-3 cursor-pointer bg-zinc-800/30 p-2 rounded-lg hover:bg-zinc-800/50 transition-colors"
+            onClick={() => setShowDueToday(!showDueToday)}
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
+              <h3 className="text-xs font-bold text-yellow-400 uppercase tracking-wider">Due Today</h3>
+              {dueToday.length > 0 && <span className="bg-yellow-500/20 text-yellow-400 text-xs px-2 py-0.5 rounded-full font-bold">{dueToday.length}</span>}
+            </div>
+            <span className="text-zinc-500 text-xs font-bold px-2">{showDueToday ? '▼ HIDE' : '▶ SHOW'}</span>
           </div>
 
-          {dueToday.length === 0 ? (
-            <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-3"><p className="text-emerald-400 text-sm font-medium flex items-center gap-2"><span>✓</span> No payments due today</p></div>
-          ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {dueToday.map((item) => (
-                <div key={`duetoday-${item.id}`} className="flex items-center justify-between p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-xl hover:bg-yellow-500/10 hover:border-yellow-500/30 transition-all group">
-                  <Link href={`/payments?clientId=${item.clientId}`} className="flex-1 min-w-0">
-                    <p className="font-bold text-yellow-400 truncate">{item.clientName}</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">TXN-{item.loanId.toString().padStart(4, '0')} · Period {item.period}</p>
-                  </Link>
-                  <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                    <div className="text-right">
-                      <p className="font-bold text-white">{formatCurrency(item.expectedAmount)}</p>
+          {showDueToday && (
+            dueToday.length === 0 ? (
+              <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-3"><p className="text-emerald-400 text-sm font-medium flex items-center gap-2"><span>✓</span> No payments due today</p></div>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {dueToday.map((item) => (
+                  <div key={`duetoday-${item.id}`} className="flex items-center justify-between p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-xl hover:bg-yellow-500/10 hover:border-yellow-500/30 transition-all group">
+                    <Link href={`/payments?clientId=${item.clientId}`} className="flex-1 min-w-0">
+                      <p className="font-bold text-yellow-400 truncate">{item.clientName}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">TXN-{item.loanId.toString().padStart(4, '0')} · Period {item.period}</p>
+                    </Link>
+                    <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                      <div className="text-right">
+                        <p className="font-bold text-white">{formatCurrency(item.expectedAmount)}</p>
+                      </div>
+                      <CommunicationButtons alert={item} type="DUE_TODAY" />
+                      <Link href={`/payments?clientId=${item.clientId}`} className="bg-yellow-500 text-black text-xs px-3 py-2 rounded-lg font-bold group-hover:bg-yellow-400 transition-colors whitespace-nowrap">Process</Link>
                     </div>
-                    <CommunicationButtons alert={item} type="DUE_TODAY" />
-                    <Link href={`/payments?clientId=${item.clientId}`} className="bg-yellow-500 text-black text-xs px-3 py-2 rounded-lg font-bold group-hover:bg-yellow-400 transition-colors whitespace-nowrap">Process</Link>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
           )}
         </div>
 
         {/* 🔵 UPCOMING RADAR */}
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-            <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider">Upcoming Radar — Next 7 Days</h3>
+          <div 
+            className="flex items-center justify-between mb-3 cursor-pointer bg-zinc-800/30 p-2 rounded-lg hover:bg-zinc-800/50 transition-colors"
+            onClick={() => setShowUpcoming(!showUpcoming)}
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider">Upcoming Radar — Next 7 Days</h3>
+              {upcoming.length > 0 && <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded-full font-bold">{upcoming.length}</span>}
+            </div>
+            <span className="text-zinc-500 text-xs font-bold px-2">{showUpcoming ? '▼ HIDE' : '▶ SHOW'}</span>
           </div>
 
-          {upcoming.length === 0 ? (
-            <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-3"><p className="text-emerald-400 text-sm font-medium flex items-center gap-2"><span>✓</span> No upcoming payments this week</p></div>
-          ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {upcoming.map((item) => (
-                <div key={`upcoming-${item.id}`} className="flex items-center justify-between p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl hover:bg-blue-500/10 hover:border-blue-500/30 transition-all group">
-                  <Link href={`/payments?clientId=${item.clientId}`} className="flex-1 min-w-0">
-                    <p className="font-bold text-blue-400 truncate">{item.clientName}</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">TXN-{item.loanId.toString().padStart(4, '0')} · Period {item.period}</p>
-                  </Link>
-                  <div className="flex items-center gap-3 ml-4 flex-shrink-0">
-                    <div className="text-right">
-                      <p className="font-bold text-white">{formatCurrency(item.expectedAmount)}</p>
-                      <p className="text-xs text-blue-400">Due {formatDate(item.dueDate)}</p>
+          {showUpcoming && (
+            upcoming.length === 0 ? (
+              <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-3"><p className="text-emerald-400 text-sm font-medium flex items-center gap-2"><span>✓</span> No upcoming payments this week</p></div>
+            ) : (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {upcoming.map((item) => (
+                  <div key={`upcoming-${item.id}`} className="flex items-center justify-between p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl hover:bg-blue-500/10 hover:border-blue-500/30 transition-all group">
+                    <Link href={`/payments?clientId=${item.clientId}`} className="flex-1 min-w-0">
+                      <p className="font-bold text-blue-400 truncate">{item.clientName}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">TXN-{item.loanId.toString().padStart(4, '0')} · Period {item.period}</p>
+                    </Link>
+                    <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                      <div className="text-right">
+                        <p className="font-bold text-white">{formatCurrency(item.expectedAmount)}</p>
+                        <p className="text-xs text-blue-400">Due {formatDate(item.dueDate)}</p>
+                      </div>
+                      <CommunicationButtons alert={item} type="UPCOMING" />
+                      <Link href={`/payments?clientId=${item.clientId}`} className="bg-blue-500/20 border border-blue-500/30 text-blue-400 text-xs px-3 py-2 rounded-lg font-bold hover:bg-blue-500 hover:text-white transition-colors whitespace-nowrap">Process</Link>
                     </div>
-                    <CommunicationButtons alert={item} type="UPCOMING" />
-                    <Link href={`/payments?clientId=${item.clientId}`} className="bg-blue-500/20 border border-blue-500/30 text-blue-400 text-xs px-3 py-2 rounded-lg font-bold hover:bg-blue-500 hover:text-white transition-colors whitespace-nowrap">Process</Link>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
           )}
         </div>
       </div>
