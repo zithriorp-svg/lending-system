@@ -127,28 +127,31 @@ export async function disburseLoan(data: LoanDisbursementData) {
       }
     });
 
-    // 5. Create the LoanInstallment records
+    // 5. 🚀 CALENDAR OVERRIDE: Create the LoanInstallment records with Ironclad Server Math
     const disbursementDate = new Date();
     
-    for (const scheduleItem of data.schedule) {
+    // We use the index `i` of the loop to force perfect chronological spacing, ignoring frontend glitches
+    for (let i = 0; i < data.schedule.length; i++) {
+      const scheduleItem = data.schedule[i];
+      const truePeriodNumber = i + 1; 
       const dueDate = new Date(disbursementDate);
       
       switch (data.termType) {
         case "Days":
-          dueDate.setDate(dueDate.getDate() + scheduleItem.periodNumber);
+          dueDate.setDate(dueDate.getDate() + truePeriodNumber);
           break;
         case "Weeks":
-          dueDate.setDate(dueDate.getDate() + (scheduleItem.periodNumber * 7));
+          dueDate.setDate(dueDate.getDate() + (truePeriodNumber * 7));
           break;
         case "Months":
-          dueDate.setMonth(dueDate.getMonth() + scheduleItem.periodNumber);
+          dueDate.setMonth(dueDate.getMonth() + truePeriodNumber);
           break;
       }
 
       await prisma.loanInstallment.create({
         data: {
           loanId: loan.id,
-          period: scheduleItem.periodNumber,
+          period: truePeriodNumber,
           dueDate: dueDate,
           expectedAmount: scheduleItem.amount,
           principal: scheduleItem.principalPortion,
@@ -222,3 +225,4 @@ export async function rejectApplication(applicationId: number) {
     return { error: error.message || "Failed to reject application" };
   }
 }
+
