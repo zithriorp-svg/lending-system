@@ -295,13 +295,22 @@ model AgentApplication {
 
   // 3. Collateral Declaration
   assetType       String
+  customAssetType String?  // Automatically used if "Other" is selected
   assetValue      Float
   assetSpecs      String
 
-  // 4. Forensic & Hardware Data (Saved as Base64 Secure Strings)
+  // 4. Forensic Identity Data (Base64)
   idCardData      String?
   selfieData      String?
   signatureData   String?
+
+  // 5. 6-Point Collateral Inspection (Base64)
+  collatFront     String?
+  collatRear      String?
+  collatLeft      String?
+  collatRight     String?
+  collatSerial    String?
+  collatDoc       String?
 
   // System Tracking
   status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
