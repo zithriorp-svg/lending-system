@@ -310,3 +310,38 @@ model AgentApplication {
   @@index([status])
   @@index([createdAt(sort: Desc)])
 }
+
+
+
+// ==========================================
+// AGENT & CO-MAKER BINDING APPLICATIONS
+// ==========================================
+model AgentApplication {
+  id              Int      @id @default(autoincrement())
+  
+  // 1. Personal Matrix
+  firstName       String
+  lastName        String
+  phone           String
+  fbProfileUrl    String
+  address         String
+
+  // 2. Financial Capacity
+  incomeSource    String
+  grossIncome     Float
+
+  // 3. Collateral Declaration
+  assetType       String
+  assetValue      Float
+  assetSpecs      String
+
+  // 4. Forensic & Hardware Data (Saved as Base64 Secure Strings)
+  idCardData      String?
+  selfieData      String?
+  signatureData   String?
+
+  // System Tracking
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
