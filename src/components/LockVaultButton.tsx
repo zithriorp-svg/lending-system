@@ -1,23 +1,38 @@
 "use client";
 
-import { logout } from "@/lib/auth";
+import { useState } from "react";
 
 export default function LockVaultButton() {
-  const handleLogout = async () => {
-    if (confirm("Lock the vault and logout?")) {
-      await logout();
+  const [isLocking, setIsLocking] = useState(false);
+
+  const handleLock = async () => {
+    if (!confirm("Lock the vault and logout?")) return;
+    
+    setIsLocking(true);
+    try {
+      // Trigger the Global Cookie Incinerator
+      await fetch('/api/auth/logout', { method: 'POST' });
+      
+      // Force a hard refresh of the browser to drop all Next.js cached states
+      window.location.href = "/login";
+    } catch (error) {
+      console.error("Error locking vault:", error);
+      setIsLocking(false);
     }
   };
 
   return (
     <button
-      onClick={handleLogout}
-      className="flex items-center gap-2 text-xs text-red-400 font-bold uppercase tracking-wider hover:text-red-300 transition-colors bg-zinc-800 px-4 py-2 rounded-xl border border-zinc-700 hover:border-red-500/50"
+      onClick={handleLock}
+      disabled={isLocking}
+      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all border shadow-lg
+        ${isLocking 
+          ? 'bg-zinc-800 text-zinc-500 border-zinc-700 cursor-not-allowed' 
+          : 'bg-rose-950/30 text-rose-400 border-rose-900/50 hover:bg-rose-900 hover:text-white'
+        }`}
     >
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-      </svg>
-      Lock Vault
+      <span className="text-lg">{isLocking ? '⏳' : '🔒'}</span>
+      {isLocking ? 'LOCKING...' : 'LOCK VAULT'}
     </button>
   );
 }
