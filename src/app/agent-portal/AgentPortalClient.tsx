@@ -14,7 +14,7 @@ interface AgentData {
 
 const formatCurrency = (value: number | null) => `₱${(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export default function AgentPortalClient({ agent, alerts, portfolios }: { agent: AgentData, alerts: any, portfolios: any[] }) {
+export default function AgentPortalClient({ agent, alerts, portfolios }: { agent: AgentData, alerts?: any, portfolios?: any[] }) {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -36,31 +36,38 @@ export default function AgentPortalClient({ agent, alerts, portfolios }: { agent
     );
   }
 
-  // 📊 CALCULATING PORTFOLIO HEALTH
+  // 📊 CALCULATING PORTFOLIO HEALTH SAFELY
   let paidCount = 0; let partialCount = 0; let pendingCount = 0; let lateCount = 0;
-  agent.activeClients.forEach(client => {
-    client.loan.installments.forEach((inst: any) => {
-      const isLate = new Date(inst.dueDate) < new Date() && inst.status === "PENDING";
-      if (inst.status === "PAID") paidCount++;
-      else if (inst.status === "PARTIAL") partialCount++;
-      else if (isLate) lateCount++;
-      else pendingCount++;
-    });
-  });
+  if (agent && agent.activeClients) {
+      agent.activeClients.forEach(client => {
+        if (client.loan && client.loan.installments) {
+            client.loan.installments.forEach((inst: any) => {
+              const isLate = new Date(inst.dueDate) < new Date() && inst.status === "PENDING";
+              if (inst.status === "PAID") paidCount++;
+              else if (inst.status === "PARTIAL") partialCount++;
+              else if (isLate) lateCount++;
+              else pendingCount++;
+            });
+        }
+      });
+  }
 
   const totalInst = paidCount + partialCount + pendingCount + lateCount;
   const latePct = totalInst > 0 ? (lateCount / totalInst) * 100 : 0;
   const paidPct = totalInst > 0 ? (paidCount / totalInst) * 100 : 0;
   const partialPct = totalInst > 0 ? (partialCount / totalInst) * 100 : 0;
 
-  // 📊 CASH FLOW VELOCITY MATRIX DATA
+  // 📊 CASH FLOW VELOCITY MATRIX DATA SAFELY
+  const riskLiability = agent?.totalRiskLiability || 0;
+  const totalCollected = agent?.totalCollected || 0;
+  
   const chartData = [
-    { week: 'W1', capitalOut: agent.totalRiskLiability * 0.1, capitalIn: agent.totalCollected * 0.05 },
-    { week: 'W3', capitalOut: agent.totalRiskLiability * 0.3, capitalIn: agent.totalCollected * 0.2 },
-    { week: 'W5', capitalOut: agent.totalRiskLiability * 0.5, capitalIn: agent.totalCollected * 0.4 },
-    { week: 'W7', capitalOut: agent.totalRiskLiability * 0.7, capitalIn: agent.totalCollected * 0.6 },
-    { week: 'W9', capitalOut: agent.totalRiskLiability * 0.9, capitalIn: agent.totalCollected * 0.8 },
-    { week: 'W12', capitalOut: agent.totalRiskLiability, capitalIn: agent.totalCollected }
+    { week: 'W1', capitalOut: riskLiability * 0.1, capitalIn: totalCollected * 0.05 },
+    { week: 'W3', capitalOut: riskLiability * 0.3, capitalIn: totalCollected * 0.2 },
+    { week: 'W5', capitalOut: riskLiability * 0.5, capitalIn: totalCollected * 0.4 },
+    { week: 'W7', capitalOut: riskLiability * 0.7, capitalIn: totalCollected * 0.6 },
+    { week: 'W9', capitalOut: riskLiability * 0.9, capitalIn: totalCollected * 0.8 },
+    { week: 'W12', capitalOut: riskLiability, capitalIn: totalCollected }
   ];
   
   const maxChartValue = Math.max(...chartData.map(d => Math.max(d.capitalOut, d.capitalIn)), 1000);
@@ -87,7 +94,7 @@ export default function AgentPortalClient({ agent, alerts, portfolios }: { agent
         <div className="absolute right-0 top-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl"></div>
         <div>
           <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mb-1">Operative Identity</p>
-          <p className="text-2xl font-black text-white uppercase tracking-wide">{agent.name}</p>
+          <p className="text-2xl font-black text-white uppercase tracking-wide">{agent?.name || "FIELD AGENT"}</p>
         </div>
         <div className="text-right">
            <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mb-1">Clearance Level</p>
@@ -109,11 +116,11 @@ export default function AgentPortalClient({ agent, alerts, portfolios }: { agent
            <div className="grid grid-cols-2 gap-4 mb-8">
               <div className="bg-rose-950/20 border border-rose-900/50 rounded-xl p-4">
                  <p className="text-[10px] text-rose-400 font-bold uppercase tracking-widest mb-1">Capital Deployed</p>
-                 <p className="text-xl md:text-2xl font-black text-rose-500">{formatCurrency(agent.totalRiskLiability)}</p>
+                 <p className="text-xl md:text-2xl font-black text-rose-500">{formatCurrency(riskLiability)}</p>
               </div>
               <div className="bg-emerald-950/20 border border-emerald-900/50 rounded-xl p-4">
                  <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mb-1">Capital Recovered</p>
-                 <p className="text-xl md:text-2xl font-black text-emerald-500">{formatCurrency(agent.totalCollected)}</p>
+                 <p className="text-xl md:text-2xl font-black text-emerald-500">{formatCurrency(totalCollected)}</p>
               </div>
            </div>
 
@@ -190,22 +197,21 @@ export default function AgentPortalClient({ agent, alerts, portfolios }: { agent
         <div className="grid grid-cols-2 gap-6">
           <div>
             <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mb-1">Unlocked Payout</p>
-            <p className="text-3xl md:text-4xl font-black text-amber-500">{formatCurrency(agent.pendingCommission)}</p>
+            <p className="text-3xl md:text-4xl font-black text-amber-500">{formatCurrency(agent?.pendingCommission || 0)}</p>
             <p className="text-[10px] md:text-xs text-zinc-500 mt-2 font-medium">Ready for immediate withdrawal</p>
           </div>
           <div>
              <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mb-1">Projected Week Pipeline</p>
-             <p className="text-xl md:text-2xl font-black text-emerald-500">+{formatCurrency(agent.totalRiskLiability * 0.05 * 0.40)}</p>
+             <p className="text-xl md:text-2xl font-black text-emerald-500">+{formatCurrency(riskLiability * 0.05 * 0.40)}</p>
              <p className="text-[10px] md:text-xs text-zinc-500 mt-2 font-medium">If all clients pay on time</p>
           </div>
         </div>
       </div>
 
-      {/* 🚀 THE FUSION: Classic Proactive HUD and Quick Actions! */}
-      <DelinquencyAlerts overdue={alerts.overdue} dueToday={alerts.dueToday} upcoming={alerts.upcoming} />
-      <QuickActionsGrid isAdmin={false} portfolios={portfolios} />
+      {/* 🚀 THE FUSION: Classic Proactive HUD and Quick Actions (Now 100% Safe) */}
+      <DelinquencyAlerts overdue={alerts?.overdue || []} dueToday={alerts?.dueToday || []} upcoming={alerts?.upcoming || []} />
+      <QuickActionsGrid isAdmin={false} portfolios={portfolios || []} />
 
     </div>
   );
 }
-
