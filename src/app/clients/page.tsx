@@ -2,16 +2,48 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Phone, MapPin } from "lucide-react";
 import { getActivePortfolio } from "@/lib/portfolio";
+import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
 export default async function ClientsPage() {
   const portfolio = await getActivePortfolio();
   
+  const cookieStore = await cookies();
+  const userRole = cookieStore.get("user_role")?.value || "AGENT";
+  const userName = cookieStore.get("user_name")?.value;
+  const isAdmin = userRole === "ADMIN";
+
+  // ============================================================================
+  // 🚀 AGENT IDENTITY PROTOCOL: Lock the client list to the specific agent
+  // ============================================================================
+  let clientFilter: any = { portfolio };
+  let loanFilter: any = {};
+
+  if (!isAdmin && userName && userName !== "User") {
+    const agentData = await prisma.agent.findFirst({
+      where: {
+        OR: [
+          { username: userName },
+          { name: userName }
+        ]
+      }
+    });
+    
+    if (agentData) {
+      // 🔒 Filter 1: Only get clients who have at least one loan assigned to this agent
+      clientFilter.loans = { some: { agentId: agentData.id } };
+      
+      // 🔒 Filter 2: Only fetch the specific loans assigned to this agent for accurate financial math
+      loanFilter = { agentId: agentData.id };
+    }
+  }
+
   const clients = await prisma.client.findMany({
-    where: { portfolio },
+    where: clientFilter,
     include: { 
       loans: { 
+        where: loanFilter,
         include: { 
           payments: true,
           installments: true
@@ -22,7 +54,7 @@ export default async function ClientsPage() {
   });
   const totalClients = clients.length;
 
-  // Calculate client stats
+  // Calculate client stats (now safely isolated to the agent's assigned loans)
   const clientStats = clients.map(client => {
     const totalBorrowed = client.loans.reduce((sum, l) => sum + Number(l.principal), 0);
     const totalRepaid = client.loans.reduce((sum, l) => 
@@ -65,8 +97,8 @@ export default async function ClientsPage() {
         <div className="space-y-4">
           {clients.length === 0 ? (
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-10 flex flex-col items-center justify-center text-center">
-              <p className="text-zinc-400 font-medium">No clients found in this portfolio.</p>
-              <Link href="/apply" className="mt-4 text-blue-400 hover:underline">Add New Client →</Link>
+              <p className="text-zinc-400 font-medium">No clients found in your assigned sector.</p>
+              {isAdmin && <Link href="/apply" className="mt-4 text-blue-400 hover:underline">Add New Client →</Link>}
             </div>
           ) : (
             clients.map((client, idx) => {
