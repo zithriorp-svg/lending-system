@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { generateLedgerSummary, type LoanData } from "@/utils/notifications";
+import Link from "next/link";
 
-// 🚀 IMPORTING THE MASTER TERMINAL SAFELY INTO THE AGENT ZONE
+// 🚀 IMPORTING THE MASTER TERMINAL SAFELY
 import PaymentTerminal from "@/app/payments/PaymentTerminal";
 
 interface InstallmentForLedger {
@@ -91,7 +91,7 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // 🚀 THE ULTIMATE BYPASS STATE: This completely evades Next.js Routing
+  // 🚀 PURE REACT STATE: No Next.js router used here at all!
   const [activePaymentClient, setActivePaymentClient] = useState<number | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
@@ -102,18 +102,7 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     try { await fetch('/api/agent-auth/logout', { method: 'POST' }); router.push('/agent-portal'); } catch (e) {} finally { setLoggingOut(false); }
   };
 
-  const openTerminalForClient = (clientId: number) => {
-    // Softly updates the URL so the PaymentTerminal reads it on mount, without triggering a page reload
-    window.history.replaceState(null, '', `?clientId=${clientId}`);
-    setActivePaymentClient(clientId);
-  };
-
-  const closeTerminal = () => {
-    // Resets URL and closes terminal
-    window.history.replaceState(null, '', window.location.pathname);
-    setActivePaymentClient(null);
-  };
-
+  // HYDRATION ARMOR
   if (!mounted) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
@@ -123,7 +112,7 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     );
   }
 
-  // 🚀 IF AN AGENT CLICKS PROCESS, RENDER THE TERMINAL INSTEAD OF THE HUD
+  // 🚀 IF AN AGENT CLICKS PROCESS, RENDER THE TERMINAL PURELY FROM MEMORY
   if (activePaymentClient) {
     const loanOptions = agent.activeClients.map(c => ({
       id: c.loanId,
@@ -134,12 +123,21 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
       }
     }));
 
+    // Next.js's PaymentTerminal requires the clientId parameter in the URL.
+    // By pushing the URL state silently without reloading, it feeds the terminal safely.
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', `?clientId=${activePaymentClient}`);
+    }
+
     return (
       <div className="min-h-screen bg-black p-2 md:p-4">
         <div className="max-w-4xl mx-auto space-y-4 pb-20 font-sans">
           <div className="flex justify-between items-center pt-2 pb-4 border-b border-zinc-800">
             <button
-              onClick={closeTerminal}
+              onClick={() => {
+                if (typeof window !== 'undefined') window.history.replaceState(null, '', window.location.pathname);
+                setActivePaymentClient(null);
+              }}
               className="bg-emerald-900/50 hover:bg-emerald-800 border border-emerald-500/50 text-emerald-400 px-6 py-3 rounded-xl text-xs md:text-sm font-black uppercase tracking-widest transition-all shadow-lg flex items-center gap-2"
             >
               ← Return to Tactical HUD
@@ -349,8 +347,8 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
                 </div>
                 
                 <div className="grid grid-cols-2 gap-2 mt-4">
-                  {/* 🚀 THE BYPASS: Calling state instead of Link */}
-                  <button onClick={() => openTerminalForClient(client.clientId)} className="flex items-center justify-center bg-rose-600 hover:bg-rose-500 text-white text-xs font-black uppercase tracking-wider py-3 rounded-xl transition-colors shadow-lg w-full">
+                  {/* 🚀 THE BYPASS: Calling state instead of Next.js Link */}
+                  <button onClick={() => setActivePaymentClient(client.clientId)} className="flex items-center justify-center bg-rose-600 hover:bg-rose-500 text-white text-xs font-black uppercase tracking-wider py-3 rounded-xl transition-colors shadow-lg w-full">
                     ⚡ Process Payment
                   </button>
                   <FBNotifyButton message={generateOverdueMessage(client.clientName, client.nextDuePeriod || 1, client.nextDueDate || new Date(), client.daysLate, client.nextDueAmount || 0, client.loan)} clientName={client.clientName} fbProfileUrl={client.fbProfileUrl} messengerId={client.messengerId} />
@@ -380,8 +378,8 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-black text-emerald-400 mr-2">{formatCurrency(client.nextDueAmount || 0)}</p>
-                    {/* 🚀 THE BYPASS: Calling state instead of Link */}
-                    <button onClick={() => openTerminalForClient(client.clientId)} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase rounded-lg transition-colors border border-zinc-700">Process</button>
+                    {/* 🚀 THE BYPASS: Calling state instead of Next.js Link */}
+                    <button onClick={() => setActivePaymentClient(client.clientId)} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase rounded-lg transition-colors border border-zinc-700">Process</button>
                   </div>
                </div>
              ))}
@@ -392,4 +390,3 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     </div>
   );
 }
-
