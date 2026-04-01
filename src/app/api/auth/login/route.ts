@@ -20,9 +20,32 @@ export async function POST(req: Request) {
   const passwordHash = hashPassword(password);
 
   try {
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { username }
     });
+
+    // 🚀 THE AUTO-SYNC GATEWAY: Automatically create the user if they are an authorized agent!
+    if (!user) {
+      const agent = await prisma.agent.findFirst({
+        where: {
+          OR: [
+            { username: username },
+            { name: username }
+          ]
+        }
+      });
+
+      if (agent) {
+        user = await prisma.user.create({
+          data: {
+            username: username,
+            passwordHash: passwordHash,
+            role: "AGENT",
+            name: agent.name
+          }
+        });
+      }
+    }
 
     if (!user || user.passwordHash !== passwordHash) {
       return NextResponse.redirect(new URL("/login?error=invalid", req.url));
@@ -48,7 +71,9 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 24,
       path: "/",
     });
-    cookieStore.set("user_name", user.name || user.username, {
+    
+    // 🚀 STRICT IDENTITY LOCK: Saves their exact username to pull their specific clients
+    cookieStore.set("user_name", user.username, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: 60 * 60 * 24,
