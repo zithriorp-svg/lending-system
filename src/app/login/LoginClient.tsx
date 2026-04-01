@@ -113,22 +113,13 @@ export default function LoginClient({ showSeedButton }: LoginClientProps) {
           <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest text-center mb-2">System Portals</p>
           
           <a 
-            href="/agent-portal" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="w-full bg-zinc-900/50 border border-zinc-700/50 hover:border-blue-500/50 rounded-xl p-4 text-center transition-all flex flex-col items-center justify-center gap-1 group cursor-pointer"
-          >
-            <span className="text-sm font-bold text-slate-300 group-hover:text-blue-400 transition-colors">💼 Agent Gateway</span>
-            <span className="text-[10px] text-zinc-500 font-mono">Click to open in new tab ↗</span>
-          </a>
-
-          <a 
             href="/portal" 
             target="_blank" 
             rel="noopener noreferrer"
             className="w-full bg-zinc-900/50 border border-zinc-700/50 hover:border-purple-500/50 rounded-xl p-4 text-center transition-all flex flex-col items-center justify-center gap-1 group cursor-pointer"
           >
-            <span className="text-sm font-bold text-slate-300 group-hover:text-purple-400 transition-colors">🏛️ Client Vault</span>
+            {/* 🚀 THE LABEL IS NOW "Client Loan" */}
+            <span className="text-sm font-bold text-slate-300 group-hover:text-purple-400 transition-colors">🏛️ Client Loan</span>
             <span className="text-[10px] text-zinc-500 font-mono">Click to open in new tab ↗</span>
           </a>
         </div>
