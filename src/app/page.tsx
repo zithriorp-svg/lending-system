@@ -44,13 +44,41 @@ export default async function Dashboard() {
   const userRole = cookieStore.get("user_role")?.value || "AGENT";
   const isAdmin = userRole === "ADMIN";
   const userName = cookieStore.get("user_name")?.value || "User";
-  const agentIdStr = cookieStore.get("agent_id")?.value;
-  const agentId = agentIdStr ? parseInt(agentIdStr) : null;
 
   const portfolio = await getActivePortfolio();
 
   const portfolioRecords = await prisma.systemPortfolio.findMany({ select: { id: true, name: true }, orderBy: { createdAt: 'asc' } });
   const portfolios = portfolioRecords.map(p => ({ id: p.id, name: p.name }));
+
+  // ============================================================================
+  // 🚀 AGENT IDENTITY PROTOCOL: Find the exact agent who just logged in
+  // ============================================================================
+  let agentData = null;
+
+  if (!isAdmin) {
+    if (userName && userName !== "User") {
+      // Search the database for the exact username (e.g. ralphbillani_8118)
+      agentData = await prisma.agent.findFirst({
+        where: {
+          OR: [
+            { username: userName },
+            { name: userName }
+          ]
+        },
+        include: { 
+          loans: { where: { status: 'ACTIVE' }, include: { client: true, installments: { orderBy: { period: 'asc' } } } }, 
+          commissions: true 
+        }
+      });
+    }
+
+    // Fallback ONLY if they type the generic 'agent' test account
+    if (!agentData) {
+      agentData = await prisma.agent.findFirst({
+        include: { loans: { where: { status: 'ACTIVE' }, include: { client: true, installments: { orderBy: { period: 'asc' } } } }, commissions: true }
+      });
+    }
+  }
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const todayEnd = new Date(today); todayEnd.setHours(23, 59, 59, 999);
@@ -62,8 +90,8 @@ export default async function Dashboard() {
     installments: { orderBy: { period: 'asc' } as const }
   };
 
-  // 🔒 SECURITY: Ensure agents only see their own alerts
-  const agentFilter = (!isAdmin && agentId) ? { agentId } : {};
+  // 🔒 STRICT SECURITY: If it is an Agent, ONLY fetch alerts for their exact ID
+  const agentFilter = (!isAdmin && agentData) ? { agentId: agentData.id } : {};
 
   const overdueInstallments = await prisma.loanInstallment.findMany({ where: { status: "PENDING", dueDate: { lt: today }, loan: { portfolio, ...agentFilter } }, include: { loan: { include: fullLoanInclude } }, orderBy: { dueDate: 'asc' } });
   const dueTodayInstallments = await prisma.loanInstallment.findMany({ where: { status: "PENDING", dueDate: { gte: today, lte: todayEnd }, loan: { portfolio, ...agentFilter } }, include: { loan: { include: fullLoanInclude } }, orderBy: { dueDate: 'asc' } });
@@ -82,52 +110,33 @@ export default async function Dashboard() {
   const alerts = { overdue: mapAlerts(overdueInstallments), dueToday: mapAlerts(dueTodayInstallments), upcoming: mapAlerts(upcomingInstallments) };
 
   // ============================================================================
-  // 🚀 THE ULTIMATE INTERCEPTOR: Fused Tactical HUD + Classic Actions
+  // 🚀 DEPLOY THE TACTICAL HUD FOR THE IDENTIFIED AGENT
   // ============================================================================
-  if (!isAdmin) {
-    let agentData = null;
+  if (!isAdmin && agentData) {
+    let totalRiskLiability = 0, totalCollected = 0, pendingCommission = 0, totalLifetimeEarnings = 0;
+    agentData.commissions.forEach(comm => { if (!comm.isPaidOut) pendingCommission += Number(comm.amount); totalLifetimeEarnings += Number(comm.amount); });
     
-    // First, try to find the specific agent ID
-    if (agentId) {
-      agentData = await prisma.agent.findUnique({
-        where: { id: agentId },
-        include: { loans: { where: { status: 'ACTIVE' }, include: { client: true, installments: { orderBy: { period: 'asc' } } } }, commissions: true }
-      });
-    }
-
-    // 🚀 FALLBACK: If they logged in as generic 'agent', force-load the first available agent profile so it DOES NOT crash!
-    if (!agentData) {
-      agentData = await prisma.agent.findFirst({
-        include: { loans: { where: { status: 'ACTIVE' }, include: { client: true, installments: { orderBy: { period: 'asc' } } } }, commissions: true }
-      });
-    }
-
-    if (agentData) {
-      let totalRiskLiability = 0, totalCollected = 0, pendingCommission = 0, totalLifetimeEarnings = 0;
-      agentData.commissions.forEach(comm => { if (!comm.isPaidOut) pendingCommission += Number(comm.amount); totalLifetimeEarnings += Number(comm.amount); });
-      const activeClients = agentData.loans.map(loan => {
-        totalRiskLiability += Number(loan.remainingBalance); totalCollected += Number(loan.totalPaid);
-        const nextPending = loan.installments.find(i => i.status === "PENDING" || i.status === "PARTIAL");
-        const daysLate = nextPending && new Date(nextPending.dueDate) < today ? Math.floor((today.getTime() - new Date(nextPending.dueDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
-        return {
-          loanId: loan.id, clientId: loan.clientId, clientName: `${loan.client.firstName} ${loan.client.lastName}`, firstName: loan.client.firstName,
-          phone: loan.client.phone || '', originalPrincipal: Number(loan.principal), remainingBalance: Number(loan.remainingBalance),
-          nextDueDate: nextPending?.dueDate ? new Date(nextPending.dueDate).toISOString() : null, nextDueAmount: nextPending ? Number(nextPending.expectedAmount) : null,
-          nextDuePeriod: nextPending ? nextPending.period : null, status: daysLate > 0 ? 'OVERDUE' : 'ON_TRACK', daysLate,
-          fbProfileUrl: loan.client.fbProfileUrl || null, messengerId: loan.client.messengerId || null, loan: serializeLoan(loan)
-        };
-      });
-
-      const processedAgentData = {
-        id: agentData.id, name: agentData.name, phone: agentData.phone, username: agentData.username, createdAt: agentData.createdAt,
-        activeClients: activeClients as any, totalRiskLiability, pendingCommission, totalLifetimeEarnings, totalCollected,
-        commissionsCount: agentData.commissions.length, overdueCount: activeClients.filter(c => c.status === 'OVERDUE').length,
-        onTrackCount: activeClients.filter(c => c.status === 'ON_TRACK').length, totalActiveLoans: agentData.loans.length
+    const activeClients = agentData.loans.map(loan => {
+      totalRiskLiability += Number(loan.remainingBalance); totalCollected += Number(loan.totalPaid);
+      const nextPending = loan.installments.find(i => i.status === "PENDING" || i.status === "PARTIAL");
+      const daysLate = nextPending && new Date(nextPending.dueDate) < today ? Math.floor((today.getTime() - new Date(nextPending.dueDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+      return {
+        loanId: loan.id, clientId: loan.clientId, clientName: `${loan.client.firstName} ${loan.client.lastName}`, firstName: loan.client.firstName,
+        phone: loan.client.phone || '', originalPrincipal: Number(loan.principal), remainingBalance: Number(loan.remainingBalance),
+        nextDueDate: nextPending?.dueDate ? new Date(nextPending.dueDate).toISOString() : null, nextDueAmount: nextPending ? Number(nextPending.expectedAmount) : null,
+        nextDuePeriod: nextPending ? nextPending.period : null, status: daysLate > 0 ? 'OVERDUE' : 'ON_TRACK', daysLate,
+        fbProfileUrl: loan.client.fbProfileUrl || null, messengerId: loan.client.messengerId || null, loan: serializeLoan(loan)
       };
+    });
 
-      // Deploy the fused Tactical HUD directly to the Main Door
-      return <AgentPortalClient agent={processedAgentData} alerts={alerts} portfolios={portfolios} />;
-    }
+    const processedAgentData = {
+      id: agentData.id, name: agentData.name, phone: agentData.phone, username: agentData.username, createdAt: agentData.createdAt,
+      activeClients: activeClients as any, totalRiskLiability, pendingCommission, totalLifetimeEarnings, totalCollected,
+      commissionsCount: agentData.commissions.length, overdueCount: activeClients.filter(c => c.status === 'OVERDUE').length,
+      onTrackCount: activeClients.filter(c => c.status === 'ON_TRACK').length, totalActiveLoans: agentData.loans.length
+    };
+
+    return <AgentPortalClient agent={processedAgentData} alerts={alerts} portfolios={portfolios} />;
   }
 
   // ============================================================================
