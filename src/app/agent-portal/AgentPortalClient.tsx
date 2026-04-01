@@ -4,76 +4,33 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { generateLedgerSummary, type LoanData } from "@/utils/notifications";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer
-} from "recharts";
 
 interface InstallmentForLedger {
-  period: number;
-  dueDate: Date | string;
-  expectedAmount: number;
-  principal: number;
-  interest: number;
-  penaltyFee: number;
-  status: string;
-  paymentDate: Date | string | null;
-  amountPaid: number;
+  period: number; dueDate: Date | string; expectedAmount: number;
+  principal: number; interest: number; penaltyFee: number;
+  status: string; paymentDate: Date | string | null; amountPaid: number;
 }
 
 interface LoanForLedger {
-  id: number;
-  principal: number;
-  interestRate: number;
-  termDuration: number;
-  totalRepayment: number;
-  totalPaid: number;
-  remainingBalance: number;
-  startDate: Date | string;
-  endDate: Date | string;
-  status: string;
-  goodPayerDiscountRevoked: boolean;
-  installments: InstallmentForLedger[];
+  id: number; principal: number; interestRate: number; termDuration: number;
+  totalRepayment: number; totalPaid: number; remainingBalance: number;
+  startDate: Date | string; endDate: Date | string; status: string;
+  goodPayerDiscountRevoked: boolean; installments: InstallmentForLedger[];
 }
 
 interface ActiveClient {
-  loanId: number;
-  clientId: number;
-  clientName: string;
-  firstName: string;
-  phone: string;
-  originalPrincipal: number;
-  remainingBalance: number;
-  nextDueDate: string | null;
-  nextDueAmount: number | null;
-  nextDuePeriod: number | null;
-  status: 'OVERDUE' | 'ON_TRACK';
-  daysLate: number;
-  fbProfileUrl: string | null;
-  messengerId: string | null;
-  loan: LoanForLedger;
+  loanId: number; clientId: number; clientName: string; firstName: string;
+  phone: string; originalPrincipal: number; remainingBalance: number;
+  nextDueDate: string | null; nextDueAmount: number | null; nextDuePeriod: number | null;
+  status: 'OVERDUE' | 'ON_TRACK'; daysLate: number; fbProfileUrl: string | null;
+  messengerId: string | null; loan: LoanForLedger;
 }
 
 interface AgentData {
-  id: number;
-  name: string;
-  phone: string;
-  username?: string | null;
-  createdAt: Date;
-  activeClients: ActiveClient[];
-  totalRiskLiability: number;
-  pendingCommission: number;
-  totalLifetimeEarnings: number;
-  totalCollected: number;
-  commissionsCount: number;
-  overdueCount: number;
-  onTrackCount: number;
-  totalActiveLoans: number;
+  id: number; name: string; phone: string; username?: string | null; createdAt: Date;
+  activeClients: ActiveClient[]; totalRiskLiability: number; pendingCommission: number;
+  totalLifetimeEarnings: number; totalCollected: number; commissionsCount: number;
+  overdueCount: number; onTrackCount: number; totalActiveLoans: number;
 }
 
 const formatCurrency = (value: number) => `₱${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -83,11 +40,8 @@ const formatShortDate = (date: Date | string): string => new Date(date).toLocale
 // NOTIFICATION ENGINES
 // ============================================================================
 const generateOverdueMessage = (clientName: string, period: number, dueDate: Date | string, daysLate: number, expectedAmount: number, loan: LoanForLedger): string => {
-  const baseAmount = expectedAmount;
-  const goodPayerDiscount = baseAmount * 0.04;
-  const penaltyFee = 500;
-  const totalAmount = baseAmount + goodPayerDiscount + penaltyFee;
-
+  const baseAmount = expectedAmount; const goodPayerDiscount = baseAmount * 0.04;
+  const penaltyFee = 500; const totalAmount = baseAmount + goodPayerDiscount + penaltyFee;
   let message = `URGENT ACCOUNT NOTICE ⚠️\n\nHello ${clientName},\n\nOur records indicate that your payment for Installment #${period} is currently OVERDUE.\n\n🚨 PENALTY & DISCOUNT FORFEITURE:\nBecause this payment is late, your Good Payer Discount has been strictly REVOKED.\n- Base Installment: ${formatCurrency(baseAmount)}\n- Revoked Discount: + ${formatCurrency(goodPayerDiscount)}\n- Applied Late Fees: + ${formatCurrency(penaltyFee)}\n----------------------------------\n📌 TOTAL OVERDUE FOR INST #${period}: ${formatCurrency(totalAmount)}\n\n📅 MISSED DUE DATE: ${formatShortDate(dueDate)}\n`;
   message += `\nPlease settle your overdue balance immediately to prevent further penalties or account escalation.\n\n- FinTech Vault Collections`;
   return message;
@@ -126,10 +80,7 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // 🚀 THE HYDRATION ARMOR: Prevents Next.js from rendering charts & dates on the server
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
   const handleLogout = async () => {
     if (!confirm("Logout from Agent Portal?")) return;
@@ -137,7 +88,6 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     try { await fetch('/api/agent-auth/logout', { method: 'POST' }); router.push('/agent-portal'); } catch (e) {} finally { setLoggingOut(false); }
   };
 
-  // Prevent crash by showing loading state until browser is fully ready
   if (!mounted) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
@@ -150,7 +100,7 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
   const overdueClients = agent.activeClients.filter(c => c.status === 'OVERDUE');
   const onTrackClients = agent.activeClients.filter(c => c.status === 'ON_TRACK');
 
-  // Synthetic 90-Day Chart Data for Velocity Matrix
+  // Synthetic 90-Day Data
   const chartData = [
     { week: 'W1', capitalOut: agent.totalRiskLiability * 0.1, capitalIn: agent.totalCollected * 0.05 },
     { week: 'W3', capitalOut: agent.totalRiskLiability * 0.3, capitalIn: agent.totalCollected * 0.2 },
@@ -159,6 +109,9 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     { week: 'W9', capitalOut: agent.totalRiskLiability * 0.9, capitalIn: agent.totalCollected * 0.8 },
     { week: 'W12', capitalOut: agent.totalRiskLiability, capitalIn: agent.totalCollected }
   ];
+  
+  // Dynamic scaling for native CSS chart
+  const maxChartValue = Math.max(...chartData.map(d => Math.max(d.capitalOut, d.capitalIn, 1)));
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6 pb-20 font-sans">
@@ -190,45 +143,46 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
         </div>
       </div>
 
-      {/* CASH FLOW VELOCITY MATRIX (THE CHART) */}
+      {/* 🚀 NATIVE CSS MATRIX ENGINE (CRASH-PROOF) */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
          <div className="flex justify-between items-center mb-6">
             <h2 className="text-sm font-black text-blue-400 uppercase tracking-widest flex items-center gap-2"><span>📈</span> Cash Flow Velocity</h2>
             <span className="text-[10px] font-mono text-zinc-500 bg-zinc-800 px-2 py-1 rounded">90-DAY MATRIX</span>
          </div>
          
-         <div className="grid grid-cols-2 gap-4 mb-6">
+         <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-rose-950/20 border border-rose-900/50 rounded-xl p-4">
                <p className="text-[10px] text-rose-400 font-bold uppercase tracking-widest mb-1">Capital Deployed</p>
-               <p className="text-2xl font-black text-rose-500">{formatCurrency(agent.totalRiskLiability)}</p>
+               <p className="text-xl md:text-2xl font-black text-rose-500">{formatCurrency(agent.totalRiskLiability)}</p>
             </div>
             <div className="bg-emerald-950/20 border border-emerald-900/50 rounded-xl p-4">
                <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mb-1">Capital Recovered</p>
-               <p className="text-2xl font-black text-emerald-500">{formatCurrency(agent.totalCollected)}</p>
+               <p className="text-xl md:text-2xl font-black text-emerald-500">{formatCurrency(agent.totalCollected)}</p>
             </div>
          </div>
 
-         <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorCapitalOut" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorCapitalIn" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="week" stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="#52525b" fontSize={10} tickFormatter={(value) => `₱${value/1000}k`} tickLine={false} axisLine={false} />
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px', fontSize: '12px' }} />
-                <Area type="monotone" dataKey="capitalOut" name="Deployed" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorCapitalOut)" />
-                <Area type="monotone" dataKey="capitalIn" name="Collected" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorCapitalIn)" />
-              </AreaChart>
-            </ResponsiveContainer>
+         {/* PURE HTML/CSS BAR CHART */}
+         <div className="h-48 w-full flex items-end justify-between gap-1 md:gap-2 border-b border-zinc-800 pb-2 relative">
+            {chartData.map((d, i) => (
+              <div key={i} className="flex flex-col items-center flex-1 h-full justify-end group relative">
+                
+                {/* Hover Tooltip */}
+                <div className="absolute -top-14 opacity-0 group-hover:opacity-100 bg-zinc-800 border border-zinc-700 text-white text-[10px] p-2 rounded-lg pointer-events-none transition-opacity z-10 whitespace-nowrap shadow-xl">
+                  <p className="text-emerald-400 font-bold">IN: {formatCurrency(d.capitalIn)}</p>
+                  <p className="text-rose-400 font-bold">OUT: {formatCurrency(d.capitalOut)}</p>
+                </div>
+                
+                <div className="flex items-end justify-center gap-0.5 md:gap-1 w-full h-[85%]">
+                  <div className="w-1/3 max-w-[16px] bg-gradient-to-t from-rose-900 to-rose-500 rounded-t-sm transition-all duration-500" style={{ height: `${Math.max((d.capitalOut / maxChartValue) * 100, 2)}%` }}></div>
+                  <div className="w-1/3 max-w-[16px] bg-gradient-to-t from-emerald-900 to-emerald-500 rounded-t-sm transition-all duration-500" style={{ height: `${Math.max((d.capitalIn / maxChartValue) * 100, 2)}%` }}></div>
+                </div>
+                <span className="text-[9px] md:text-[10px] font-mono text-zinc-500 mt-2">{d.week}</span>
+              </div>
+            ))}
+         </div>
+         <div className="flex justify-center gap-6 mt-4">
+           <div className="flex items-center gap-2"><div className="w-3 h-3 bg-emerald-500 rounded-sm"></div><span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Capital In</span></div>
+           <div className="flex items-center gap-2"><div className="w-3 h-3 bg-rose-500 rounded-sm"></div><span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Capital Out</span></div>
          </div>
       </div>
 
@@ -239,14 +193,13 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
         <div className="grid grid-cols-2 gap-6">
           <div>
             <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mb-1">Unlocked Payout</p>
-            <p className="text-4xl font-black text-amber-500">{formatCurrency(agent.pendingCommission)}</p>
-            <p className="text-xs text-zinc-500 mt-2 font-medium">Ready for immediate withdrawal</p>
+            <p className="text-3xl md:text-4xl font-black text-amber-500">{formatCurrency(agent.pendingCommission)}</p>
+            <p className="text-[10px] md:text-xs text-zinc-500 mt-2 font-medium">Ready for immediate withdrawal</p>
           </div>
           <div>
              <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mb-1">Projected Week Pipeline</p>
-             {/* Simple projection: 40% of whatever is due this week. Assuming 5% of total liability is due weekly for demo. */}
-             <p className="text-2xl font-black text-emerald-500">+{formatCurrency(agent.totalRiskLiability * 0.05 * 0.40)}</p>
-             <p className="text-xs text-zinc-500 mt-2 font-medium">If all clients pay on time</p>
+             <p className="text-xl md:text-2xl font-black text-emerald-500">+{formatCurrency(agent.totalRiskLiability * 0.05 * 0.40)}</p>
+             <p className="text-[10px] md:text-xs text-zinc-500 mt-2 font-medium">If all clients pay on time</p>
           </div>
         </div>
       </div>
