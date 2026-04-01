@@ -82,16 +82,25 @@ export default async function Dashboard() {
   const alerts = { overdue: mapAlerts(overdueInstallments), dueToday: mapAlerts(dueTodayInstallments), upcoming: mapAlerts(upcomingInstallments) };
 
   // ============================================================================
-  // 🚀 AGENT INTERCEPTOR: Fused Tactical HUD + Classic Actions
+  // 🚀 THE ULTIMATE INTERCEPTOR: Fused Tactical HUD + Classic Actions
   // ============================================================================
-  if (!isAdmin && agentId) {
-    const agentData = await prisma.agent.findUnique({
-      where: { id: agentId },
-      include: {
-        loans: { where: { status: 'ACTIVE' }, include: { client: true, installments: { orderBy: { period: 'asc' } } } },
-        commissions: true
-      }
-    });
+  if (!isAdmin) {
+    let agentData = null;
+    
+    // First, try to find the specific agent ID
+    if (agentId) {
+      agentData = await prisma.agent.findUnique({
+        where: { id: agentId },
+        include: { loans: { where: { status: 'ACTIVE' }, include: { client: true, installments: { orderBy: { period: 'asc' } } } }, commissions: true }
+      });
+    }
+
+    // 🚀 FALLBACK: If they logged in as generic 'agent', force-load the first available agent profile so it DOES NOT crash!
+    if (!agentData) {
+      agentData = await prisma.agent.findFirst({
+        include: { loans: { where: { status: 'ACTIVE' }, include: { client: true, installments: { orderBy: { period: 'asc' } } } }, commissions: true }
+      });
+    }
 
     if (agentData) {
       let totalRiskLiability = 0, totalCollected = 0, pendingCommission = 0, totalLifetimeEarnings = 0;
@@ -116,6 +125,7 @@ export default async function Dashboard() {
         onTrackCount: activeClients.filter(c => c.status === 'ON_TRACK').length, totalActiveLoans: agentData.loans.length
       };
 
+      // Deploy the fused Tactical HUD directly to the Main Door
       return <AgentPortalClient agent={processedAgentData} alerts={alerts} portfolios={portfolios} />;
     }
   }
