@@ -11,7 +11,7 @@ export default function AgentApplicationForm() {
     setIsSubmitting(true);
     // Simulate API call
     setTimeout(() => {
-      alert("Agent Application Submitted Successfully. Awaiting Admin Approval.");
+      alert("Binding Agent Application Submitted. Awaiting Master Admin Review.");
       setIsSubmitting(false);
       window.location.href = "/";
     }, 2000);
@@ -39,7 +39,7 @@ export default function AgentApplicationForm() {
             <h2 className="text-lg font-black text-rose-400 uppercase tracking-widest">Strict Liability Notice</h2>
           </div>
           <p className="text-rose-200/80 text-sm font-medium leading-relaxed">
-            By applying as an Agent for FinTech Vault, you automatically assume the role of <strong>CO-MAKER / GUARANTOR</strong> for every client you onboard. If a client defaults, absconds, or refuses to pay, <strong>YOU are 100% financially and legally responsible</strong> for the unpaid principal, interest, and penalties.
+            By applying as an Agent for FinTech Vault, you automatically assume the role of <strong>CO-MAKER / GUARANTOR</strong> for every client you onboard. If a client defaults, absconds, or refuses to pay, <strong>YOU are 100% financially and legally responsible</strong> for the unpaid principal, interest, and penalties. Your pledged collateral may be seized.
           </p>
         </div>
 
@@ -77,11 +77,11 @@ export default function AgentApplicationForm() {
           {/* 2. GUARANTOR CAPACITY */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
             <div className="bg-slate-800/50 px-6 py-4 border-b border-slate-800">
-              <h2 className="text-sm font-black text-amber-400 uppercase tracking-widest">2. Guarantor Financial Capacity</h2>
+              <h2 className="text-sm font-black text-amber-400 uppercase tracking-widest">2. Financial Capacity</h2>
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="md:col-span-2 text-sm text-slate-400 mb-2">
-                To act as a Co-Maker, you must prove you have the income to cover your clients' debts if they run away.
+                To act as a Co-Maker, you must prove you have the income to cover your clients' debts.
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Primary Source of Income</label>
@@ -97,7 +97,7 @@ export default function AgentApplicationForm() {
           {/* 3. FORENSIC VERIFICATION */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
             <div className="bg-slate-800/50 px-6 py-4 border-b border-slate-800">
-              <h2 className="text-sm font-black text-cyan-400 uppercase tracking-widest">3. Forensic Verification</h2>
+              <h2 className="text-sm font-black text-cyan-400 uppercase tracking-widest">3. Identity Verification</h2>
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="bg-slate-950 border border-slate-800 border-dashed rounded-xl p-6 text-center hover:border-cyan-500/50 transition-colors cursor-pointer">
@@ -110,38 +110,106 @@ export default function AgentApplicationForm() {
                 <p className="text-xs font-bold text-slate-300 uppercase">Selfie with ID</p>
                 <p className="text-[10px] text-slate-500 mt-1">Clear face and ID</p>
               </div>
-              <div className="bg-slate-950 border border-slate-800 border-dashed rounded-xl p-6 text-center hover:border-cyan-500/50 transition-colors cursor-pointer">
-                <span className="text-3xl mb-2 block">⚡</span>
-                <p className="text-xs font-bold text-slate-300 uppercase">Proof of Billing</p>
-                <p className="text-[10px] text-slate-500 mt-1">Must match address</p>
+            </div>
+          </div>
+
+          {/* 4. COLLATERAL DECLARATION */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <div className="bg-slate-800/50 px-6 py-4 border-b border-slate-800">
+              <h2 className="text-sm font-black text-purple-400 uppercase tracking-widest">4. Collateral Declaration</h2>
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="text-sm text-slate-400 mb-2">
+                Provide details of the asset you are pledging as a guarantee against client default. This asset will be seized if obligations are unmet.
               </div>
-              <div className="bg-slate-950 border border-slate-800 border-dashed rounded-xl p-6 text-center hover:border-cyan-500/50 transition-colors cursor-pointer">
-                <span className="text-3xl mb-2 block">💼</span>
-                <p className="text-xs font-bold text-slate-300 uppercase">Proof of Income</p>
-                <p className="text-[10px] text-slate-500 mt-1">Payslip or DTI</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Asset Type</label>
+                  <select required className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all outline-none appearance-none">
+                    <option value="">Select Category...</option>
+                    <option value="motorcycle">Motorcycle / Vehicle</option>
+                    <option value="real_estate">Land / Real Estate Title</option>
+                    <option value="electronics">High-Value Electronics</option>
+                    <option value="other">Other Appraisable Asset</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Estimated Market Value (₱)</label>
+                  <input required type="number" className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all outline-none" placeholder="e.g. 150000" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Asset Specifications & Condition</label>
+                  <textarea required rows={3} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all outline-none" placeholder="Include Make, Model, Year, Serial Number, OR/CR Number, and current physical condition..."></textarea>
+                </div>
+              </div>
+
+              {/* Collateral Photos UI */}
+              <div className="pt-4 border-t border-slate-800">
+                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Asset Photographic Evidence</label>
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-slate-950 border border-slate-800 border-dashed rounded-xl p-4 text-center hover:border-purple-500/50 transition-colors cursor-pointer">
+                      <span className="text-2xl mb-1 block">📸</span>
+                      <p className="text-[10px] font-bold text-slate-300 uppercase">Front View</p>
+                    </div>
+                    <div className="bg-slate-950 border border-slate-800 border-dashed rounded-xl p-4 text-center hover:border-purple-500/50 transition-colors cursor-pointer">
+                      <span className="text-2xl mb-1 block">📸</span>
+                      <p className="text-[10px] font-bold text-slate-300 uppercase">Rear / Side View</p>
+                    </div>
+                    <div className="bg-slate-950 border border-slate-800 border-dashed rounded-xl p-4 text-center hover:border-purple-500/50 transition-colors cursor-pointer">
+                      <span className="text-2xl mb-1 block">🔍</span>
+                      <p className="text-[10px] font-bold text-slate-300 uppercase">Serial / Plate</p>
+                    </div>
+                    <div className="bg-slate-950 border border-slate-800 border-dashed rounded-xl p-4 text-center hover:border-purple-500/50 transition-colors cursor-pointer">
+                      <span className="text-2xl mb-1 block">📄</span>
+                      <p className="text-[10px] font-bold text-slate-300 uppercase">Title / ORCR</p>
+                    </div>
+                 </div>
               </div>
             </div>
           </div>
 
-          {/* 4. LIABILITY ACKNOWLEDGMENT */}
+          {/* 5. LIABILITY ACKNOWLEDGMENT & SIGNATURE */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
             <div className="bg-slate-800/50 px-6 py-4 border-b border-slate-800">
-              <h2 className="text-sm font-black text-rose-400 uppercase tracking-widest">4. Binding Agreement</h2>
+              <h2 className="text-sm font-black text-rose-400 uppercase tracking-widest">5. Binding Agreement & Signature</h2>
             </div>
-            <div className="p-6 space-y-4">
-              <label className="flex items-start gap-4 p-3 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer hover:border-slate-600 transition-colors">
-                <input required type="checkbox" className="w-5 h-5 mt-0.5 accent-rose-500 rounded bg-slate-900 border-slate-700" />
-                <span className="text-xs md:text-sm text-slate-300 font-medium leading-relaxed">
-                  I acknowledge that I am applying as a <strong>Co-Maker</strong>. If any client assigned to me defaults on their loan, I agree that the unpaid balance will be legally charged to me.
-                </span>
-              </label>
+            <div className="p-6 space-y-6">
               
-              <label className="flex items-start gap-4 p-3 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer hover:border-slate-600 transition-colors">
-                <input required type="checkbox" className="w-5 h-5 mt-0.5 accent-emerald-500 rounded bg-slate-900 border-slate-700" />
-                <span className="text-xs md:text-sm text-slate-300 font-medium leading-relaxed">
-                  I swear that all information and documents provided are genuine. Any fraudulent information is grounds for immediate termination and legal action.
-                </span>
-              </label>
+              <div className="space-y-4">
+                <label className="flex items-start gap-4 p-3 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer hover:border-slate-600 transition-colors">
+                  <input required type="checkbox" className="w-5 h-5 mt-0.5 accent-rose-500 rounded bg-slate-900 border-slate-700" />
+                  <span className="text-xs md:text-sm text-slate-300 font-medium leading-relaxed">
+                    I acknowledge that I am applying as a <strong>Co-Maker</strong>. If any client assigned to me defaults on their loan, I agree that the unpaid balance will be legally charged to me, and my pledged collateral listed above may be seized by FinTech Vault.
+                  </span>
+                </label>
+                
+                <label className="flex items-start gap-4 p-3 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer hover:border-slate-600 transition-colors">
+                  <input required type="checkbox" className="w-5 h-5 mt-0.5 accent-emerald-500 rounded bg-slate-900 border-slate-700" />
+                  <span className="text-xs md:text-sm text-slate-300 font-medium leading-relaxed">
+                    I swear that all information, collateral details, and documents provided are genuine. Any fraudulent information is grounds for immediate termination and legal action.
+                  </span>
+                </label>
+              </div>
+
+              {/* Digital Signature Pad */}
+              <div className="pt-6 border-t border-slate-800">
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">Digital E-Signature</label>
+                  <p className="text-[10px] text-slate-500 text-center mb-4 uppercase tracking-widest">Type your full legal name to legally bind this contract</p>
+                  
+                  <div className="max-w-md mx-auto relative">
+                    <input 
+                      required 
+                      type="text" 
+                      className="w-full bg-slate-950/50 border-b-2 border-slate-600 border-t-0 border-l-0 border-r-0 rounded-none px-3 py-4 text-emerald-400 text-2xl font-serif italic focus:border-rose-500 focus:ring-0 transition-all outline-none text-center" 
+                      placeholder="Sign Here..." 
+                    />
+                    <div className="absolute right-2 bottom-3 text-[10px] text-slate-600 font-bold uppercase pointer-events-none">
+                      VERIFIED
+                    </div>
+                  </div>
+              </div>
+
             </div>
           </div>
 
@@ -155,11 +223,11 @@ export default function AgentApplicationForm() {
               {isSubmitting ? (
                 <>
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  Processing Secure Application...
+                  Encrypting Legal Contract...
                 </>
               ) : (
                 <>
-                  <span>✍️</span> Submit Binding Application
+                  <span>⚖️</span> Submit Binding Application
                 </>
               )}
             </button>
@@ -176,4 +244,3 @@ export default function AgentApplicationForm() {
     </div>
   );
 }
-
