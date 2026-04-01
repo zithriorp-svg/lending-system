@@ -105,13 +105,15 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
 
   // 📊 CALCULATING PORTFOLIO HEALTH
   let paidCount = 0; let partialCount = 0; let pendingCount = 0; let lateCount = 0;
+  let paidValue = 0; let partialValue = 0; let pendingValue = 0; let lateValue = 0;
+
   agent.activeClients.forEach(client => {
     client.loan.installments.forEach(inst => {
       const isLate = new Date(inst.dueDate) < new Date() && inst.status === "PENDING";
-      if (inst.status === "PAID") paidCount++;
-      else if (inst.status === "PARTIAL") partialCount++;
-      else if (isLate) lateCount++;
-      else pendingCount++;
+      if (inst.status === "PAID") { paidCount++; paidValue += inst.expectedAmount; }
+      else if (inst.status === "PARTIAL") { partialCount++; partialValue += inst.expectedAmount; }
+      else if (isLate) { lateCount++; lateValue += inst.expectedAmount; }
+      else { pendingCount++; pendingValue += inst.expectedAmount; }
     });
   });
 
@@ -119,7 +121,7 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
   const latePct = totalInst > 0 ? (lateCount / totalInst) * 100 : 0;
   const paidPct = totalInst > 0 ? (paidCount / totalInst) * 100 : 0;
   const partialPct = totalInst > 0 ? (partialCount / totalInst) * 100 : 0;
-  const pendingPct = totalInst > 0 ? (pendingCount / totalInst) * 100 : 100; // Default pending if no loans
+  const pendingPct = totalInst > 0 ? (pendingCount / totalInst) * 100 : 100;
 
   // 📊 CASH FLOW VELOCITY MATRIX DATA
   const chartData = [
@@ -213,7 +215,7 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
           </h2>
           <div className="flex flex-col md:flex-row items-center justify-center gap-12">
             
-            {/* CSS DONUT CHART */}
+            {/* PURE CSS DONUT CHART */}
             <div className="relative w-48 h-48 rounded-full shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]" style={{
                 background: `conic-gradient(
                   #f43f5e 0% ${latePct}%,
@@ -228,7 +230,7 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
               </div>
             </div>
 
-            {/* LEGEND */}
+            {/* PURE CSS LEGEND */}
             <div className="flex flex-col gap-4">
                <div className="flex items-center justify-between w-32 border-b border-zinc-800 pb-2">
                  <div className="flex items-center gap-2"><div className="w-3 h-3 bg-rose-500 rounded-sm"></div><span className="text-xs text-zinc-400">Late</span></div>
