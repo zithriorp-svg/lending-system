@@ -2,97 +2,22 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-
-// 🚀 IMPORTING THE MASTER TERMINAL SAFELY
-import PaymentTerminal from "@/app/payments/PaymentTerminal";
-
-interface InstallmentForLedger {
-  period: number; dueDate: Date | string; expectedAmount: number;
-  principal: number; interest: number; penaltyFee: number;
-  status: string; paymentDate: Date | string | null; amountPaid: number;
-}
-
-interface LoanForLedger {
-  id: number; principal: number; interestRate: number; termDuration: number;
-  totalRepayment: number; totalPaid: number; remainingBalance: number;
-  startDate: Date | string; endDate: Date | string; status: string;
-  goodPayerDiscountRevoked: boolean; installments: InstallmentForLedger[];
-}
-
-interface ActiveClient {
-  loanId: number; clientId: number; clientName: string; firstName: string;
-  phone: string; originalPrincipal: number; remainingBalance: number;
-  nextDueDate: string | null; nextDueAmount: number | null; nextDuePeriod: number | null;
-  status: 'OVERDUE' | 'ON_TRACK'; daysLate: number; fbProfileUrl: string | null;
-  messengerId: string | null; loan: LoanForLedger;
-}
+import DelinquencyAlerts from "@/components/DelinquencyAlerts";
+import QuickActionsGrid from "@/components/QuickActionsGrid";
 
 interface AgentData {
   id: number; name: string; phone: string; username?: string | null; createdAt: Date;
-  activeClients: ActiveClient[]; totalRiskLiability: number; pendingCommission: number;
+  activeClients: any[]; totalRiskLiability: number; pendingCommission: number;
   totalLifetimeEarnings: number; totalCollected: number; commissionsCount: number;
   overdueCount: number; onTrackCount: number; totalActiveLoans: number;
 }
 
 const formatCurrency = (value: number | null) => `₱${(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const formatShortDate = (dateStr: string | Date | null) => {
-  if (!dateStr) return "N/A";
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-};
-
-const formatDate = (dateStr: string | Date | null) => {
-  if (!dateStr) return "N/A";
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-};
-
-// ============================================================================
-// NOTIFICATION ENGINES
-// ============================================================================
-const generateOverdueMessage = (clientName: string, period: number, dueDate: Date | string, daysLate: number, expectedAmount: number, loan: LoanForLedger): string => {
-  const baseAmount = expectedAmount; const goodPayerDiscount = baseAmount * 0.04;
-  const penaltyFee = 500; const totalAmount = baseAmount + goodPayerDiscount + penaltyFee;
-  let message = `URGENT ACCOUNT NOTICE ⚠️\n\nHello ${clientName},\n\nOur records indicate that your payment for Installment #${period} is currently OVERDUE.\n\n🚨 PENALTY & DISCOUNT FORFEITURE:\nBecause this payment is late, your Good Payer Discount has been strictly REVOKED.\n- Base Installment: ${formatCurrency(baseAmount)}\n- Revoked Discount: + ${formatCurrency(goodPayerDiscount)}\n- Applied Late Fees: + ${formatCurrency(penaltyFee)}\n----------------------------------\n📌 TOTAL OVERDUE FOR INST #${period}: ${formatCurrency(totalAmount)}\n\n📅 MISSED DUE DATE: ${formatShortDate(dueDate)}\n`;
-  message += `\nPlease settle your overdue balance immediately to prevent further penalties or account escalation.\n\n- FinTech Vault Collections`;
-  return message;
-};
-
-const generateReminderMessage = (clientName: string, period: number, dueDate: Date | string, expectedAmount: number, loan: LoanForLedger): string => {
-  let message = `UPCOMING PAYMENT REMINDER 🔔\n\nHello ${clientName},\n\nThis is a reminder that your next payment for Installment #${period} is due soon.\n\n📌 AMOUNT DUE: ${formatCurrency(expectedAmount)} (Includes your 6% Good Payer rate)\n📅 DUE DATE: ${formatShortDate(dueDate)}\n\n🚨 IMPORTANT: If you pay late, the 4% discount is no longer applicable and you will be charged the standard 10% contract rate plus penalties.\n`;
-  message += `\n- FinTech Vault Collections`;
-  return message;
-};
-
-const MessengerIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.092.301 2.246.464 3.443.464 6.627 0 12-4.974 12-11.111S18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.26L19.752 8l-6.561 6.963z"/></svg>
-);
-
-function FBNotifyButton({ message, clientName, fbProfileUrl, messengerId }: { message: string; clientName: string; fbProfileUrl: string | null; messengerId: string | null; }) {
-  const [copied, setCopied] = useState(false);
-  const handleClick = () => {
-    navigator.clipboard.writeText(message);
-    let profileUrl = fbProfileUrl ? (fbProfileUrl.startsWith('http') ? fbProfileUrl : `https://${fbProfileUrl}`) : (messengerId ? (messengerId.startsWith('http') ? messengerId : `https://${messengerId}`) : `https://www.facebook.com/search/people/?q=${encodeURIComponent(clientName)}`);
-    window.open(profileUrl, '_blank');
-    setCopied(true); setTimeout(() => setCopied(false), 2000);
-  };
-  return (
-    <button onClick={handleClick} className={`flex items-center justify-center gap-2 w-full py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-lg ${copied ? 'bg-emerald-600 border border-emerald-500 text-white' : 'bg-blue-600 hover:bg-blue-500 border border-blue-500/50 text-white'}`}>
-      <MessengerIcon className="w-4 h-4" /> {copied ? '✓ COPIED & OPENED' : 'ONE-CLICK STRIKE (FB)'}
-    </button>
-  );
-}
-
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
-export default function AgentPortalClient({ agent }: { agent: AgentData }) {
+export default function AgentPortalClient({ agent, alerts, portfolios }: { agent: AgentData, alerts: any, portfolios: any[] }) {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const [mounted, setMounted] = useState(false);
-
-  // 🚀 PURE REACT STATE: No Next.js router used here at all!
-  const [activePaymentClient, setActivePaymentClient] = useState<number | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -102,7 +27,6 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     try { await fetch('/api/agent-auth/logout', { method: 'POST' }); router.push('/agent-portal'); } catch (e) {} finally { setLoggingOut(false); }
   };
 
-  // HYDRATION ARMOR
   if (!mounted) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
@@ -112,56 +36,10 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     );
   }
 
-  // 🚀 IF AN AGENT CLICKS PROCESS, RENDER THE TERMINAL PURELY FROM MEMORY
-  if (activePaymentClient) {
-    const loanOptions = agent.activeClients.map(c => ({
-      id: c.loanId,
-      clientId: c.clientId,
-      client: {
-        firstName: c.firstName,
-        lastName: c.clientName.replace(c.firstName, '').trim()
-      }
-    }));
-
-    // Next.js's PaymentTerminal requires the clientId parameter in the URL.
-    // By pushing the URL state silently without reloading, it feeds the terminal safely.
-    if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', `?clientId=${activePaymentClient}`);
-    }
-
-    return (
-      <div className="min-h-screen bg-black p-2 md:p-4">
-        <div className="max-w-4xl mx-auto space-y-4 pb-20 font-sans">
-          <div className="flex justify-between items-center pt-2 pb-4 border-b border-zinc-800">
-            <button
-              onClick={() => {
-                if (typeof window !== 'undefined') window.history.replaceState(null, '', window.location.pathname);
-                setActivePaymentClient(null);
-              }}
-              className="bg-emerald-900/50 hover:bg-emerald-800 border border-emerald-500/50 text-emerald-400 px-6 py-3 rounded-xl text-xs md:text-sm font-black uppercase tracking-widest transition-all shadow-lg flex items-center gap-2"
-            >
-              ← Return to Tactical HUD
-            </button>
-          </div>
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl md:p-6 shadow-2xl">
-            <PaymentTerminal loans={loanOptions} portfolio="Agent Collection Zone" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ============================================================================
-  // NORMAL TACTICAL HUD VIEW (BELOW)
-  // ============================================================================
-
-  const overdueClients = agent.activeClients.filter(c => c.status === 'OVERDUE');
-  const onTrackClients = agent.activeClients.filter(c => c.status === 'ON_TRACK');
-
   // 📊 CALCULATING PORTFOLIO HEALTH
   let paidCount = 0; let partialCount = 0; let pendingCount = 0; let lateCount = 0;
   agent.activeClients.forEach(client => {
-    client.loan.installments.forEach(inst => {
+    client.loan.installments.forEach((inst: any) => {
       const isLate = new Date(inst.dueDate) < new Date() && inst.status === "PENDING";
       if (inst.status === "PAID") paidCount++;
       else if (inst.status === "PARTIAL") partialCount++;
@@ -174,7 +52,6 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
   const latePct = totalInst > 0 ? (lateCount / totalInst) * 100 : 0;
   const paidPct = totalInst > 0 ? (paidCount / totalInst) * 100 : 0;
   const partialPct = totalInst > 0 ? (partialCount / totalInst) * 100 : 0;
-  const pendingPct = totalInst > 0 ? (pendingCount / totalInst) * 100 : 100;
 
   // 📊 CASH FLOW VELOCITY MATRIX DATA
   const chartData = [
@@ -220,7 +97,7 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        {/* IRONCLAD NATIVE CHART: CASH FLOW VELOCITY MATRIX */}
+        {/* NATIVE CHART: CASH FLOW VELOCITY MATRIX */}
         <div className="md:col-span-2 bg-black border border-[#00ff00]/30 rounded-2xl p-6 shadow-xl">
            <div className="flex justify-between items-center mb-6">
               <h2 className="text-sm font-bold text-[#00ff00] uppercase tracking-widest flex items-center gap-2">
@@ -261,7 +138,7 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
            </div>
         </div>
 
-        {/* IRONCLAD NATIVE CHART: PORTFOLIO HEALTH (DONUT) */}
+        {/* NATIVE CHART: PORTFOLIO HEALTH (DONUT) */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl md:col-span-2">
           <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-8">
             Micro-Portfolio Health (Installments)
@@ -307,7 +184,7 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
       </div>
 
       {/* COMMISSION FORECASTER */}
-      <div className="bg-gradient-to-br from-amber-900/20 to-yellow-900/10 border border-amber-500/30 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-br from-amber-900/20 to-yellow-900/10 border border-amber-500/30 rounded-2xl p-6 shadow-xl relative overflow-hidden mb-6">
         <div className="absolute -right-10 -top-10 text-9xl opacity-5">💰</div>
         <h2 className="text-sm font-black text-amber-400 uppercase tracking-widest mb-4">Commission Forecaster (40% Cut)</h2>
         <div className="grid grid-cols-2 gap-6">
@@ -324,69 +201,11 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
         </div>
       </div>
 
-      {/* TACTICAL COLLECTION QUEUE (OVERDUE) */}
-      {overdueClients.length > 0 && (
-        <div className="bg-rose-950/20 border-2 border-rose-900/50 rounded-2xl p-1 shadow-2xl">
-          <div className="bg-rose-900/50 p-4 rounded-t-xl flex items-center justify-between">
-            <h2 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2"><span className="animate-pulse">🚨</span> Critical Strike Queue</h2>
-            <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-1 rounded">{overdueClients.length} TARGETS</span>
-          </div>
-          
-          <div className="p-2 space-y-2">
-            {overdueClients.map(client => (
-              <div key={client.loanId} className="bg-zinc-950 border border-rose-900/50 rounded-xl p-4">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <p className="text-lg font-black text-white uppercase">{client.clientName}</p>
-                    <p className="text-[10px] text-zinc-400 font-mono tracking-widest mt-1">TXN-{client.loanId.toString().padStart(4, '0')} • {client.phone}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">{client.daysLate} DAYS DELINQUENT</p>
-                    <p className="text-xl font-black text-rose-400">{formatCurrency(client.nextDueAmount || 0)}</p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-2 mt-4">
-                  {/* 🚀 THE BYPASS: Calling state instead of Next.js Link */}
-                  <button onClick={() => setActivePaymentClient(client.clientId)} className="flex items-center justify-center bg-rose-600 hover:bg-rose-500 text-white text-xs font-black uppercase tracking-wider py-3 rounded-xl transition-colors shadow-lg w-full">
-                    ⚡ Process Payment
-                  </button>
-                  <FBNotifyButton message={generateOverdueMessage(client.clientName, client.nextDuePeriod || 1, client.nextDueDate || new Date(), client.daysLate, client.nextDueAmount || 0, client.loan)} clientName={client.clientName} fbProfileUrl={client.fbProfileUrl} messengerId={client.messengerId} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* STANDARD MONITORING (ON-TRACK) */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
-         <div className="flex justify-between items-center mb-6">
-            <h2 className="text-sm font-black text-blue-400 uppercase tracking-widest flex items-center gap-2"><span>📡</span> Standard Monitoring</h2>
-            <span className="text-[10px] font-mono text-zinc-500 bg-zinc-800 px-2 py-1 rounded">{onTrackClients.length} ON TRACK</span>
-         </div>
-
-         {onTrackClients.length === 0 ? (
-           <p className="text-center text-zinc-600 text-sm py-4">No active clients assigned to your sector.</p>
-         ) : (
-           <div className="space-y-3">
-             {onTrackClients.slice(0, 5).map(client => (
-               <div key={client.loanId} className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 flex flex-col md:flex-row justify-between md:items-center gap-4">
-                  <div>
-                    <p className="text-sm font-black text-white uppercase">{client.clientName}</p>
-                    <p className="text-[10px] text-zinc-500 font-mono tracking-widest mt-1">DUE: {formatDate(client.nextDueDate)}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-black text-emerald-400 mr-2">{formatCurrency(client.nextDueAmount || 0)}</p>
-                    {/* 🚀 THE BYPASS: Calling state instead of Next.js Link */}
-                    <button onClick={() => setActivePaymentClient(client.clientId)} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase rounded-lg transition-colors border border-zinc-700">Process</button>
-                  </div>
-               </div>
-             ))}
-           </div>
-         )}
-      </div>
+      {/* 🚀 THE FUSION: Classic Proactive HUD and Quick Actions! */}
+      <DelinquencyAlerts overdue={alerts.overdue} dueToday={alerts.dueToday} upcoming={alerts.upcoming} />
+      <QuickActionsGrid isAdmin={false} portfolios={portfolios} />
 
     </div>
   );
 }
+
