@@ -34,13 +34,11 @@ interface SplitPaymentResult {
   error?: string;
 }
 
-// Process split payment (Interest or Principal only)
 export async function processSplitPaymentAction(
   installmentId: number,
   paymentType: "INTEREST" | "PRINCIPAL"
 ): Promise<SplitPaymentResult> {
   try {
-    // Get the installment with loan details
     const installment = await prisma.loanInstallment.findUnique({
       where: { id: installmentId },
       include: {
@@ -63,14 +61,12 @@ export async function processSplitPaymentAction(
       return { success: false, error: `${paymentType} already paid for this installment` };
     }
 
-    // Calculate remaining balance after this payment
     const allPayments = await prisma.payment.findMany({
       where: { loanId: loan.id, status: "Paid" }
     });
     const totalPaidBefore = allPayments.reduce((sum, p) => sum + Number(p.amount), 0);
     const remainingBalance = Number(loan.totalRepayment) - totalPaidBefore - amount;
 
-    // Create the payment record
     const payment = await prisma.payment.create({
       data: {
         loanId: loan.id,
@@ -86,7 +82,6 @@ export async function processSplitPaymentAction(
       }
     });
 
-    // Update the installment with split payment tracking
     const newPrincipalPaid = paymentType === "PRINCIPAL" 
       ? Number(installment.principalPaid) + amount 
       : Number(installment.principalPaid);
@@ -95,7 +90,6 @@ export async function processSplitPaymentAction(
       : Number(installment.interestPaid);
     const newAmountPaid = Number(installment.amountPaid) + amount;
 
-    // Determine new status
     const principalFullyPaid = newPrincipalPaid >= Number(installment.principal);
     const interestFullyPaid = newInterestPaid >= Number(installment.interest);
     let newStatus = installment.status;
@@ -118,7 +112,6 @@ export async function processSplitPaymentAction(
       }
     });
 
-    // Create the ledger entry AND AuditLog in a transaction
     await prisma.$transaction([
       prisma.ledger.create({
         data: {
@@ -130,7 +123,6 @@ export async function processSplitPaymentAction(
           paymentId: payment.id
         }
       }),
-      // Immutable Audit Log
       prisma.auditLog.create({
         data: {
           type: "REPAYMENT",
@@ -143,12 +135,8 @@ export async function processSplitPaymentAction(
       })
     ]);
 
-    // ====== AGENT COMMISSION LOGIC (60/40 SPLIT) ======
-    // If this is an interest payment and the loan has an assigned agent,
-    // automatically create a commission record for 40% of the interest
     if (paymentType === "INTEREST" && loan.agentId) {
-      const agentCommission = amount * 0.4; // 40% of interest goes to agent
-      
+      const agentCommission = amount * 0.4;
       await prisma.agentCommission.create({
         data: {
           agentId: loan.agentId,
@@ -157,23 +145,18 @@ export async function processSplitPaymentAction(
           isPaidOut: false
         }
       });
-      
-      console.log(`Agent Commission Created: ₱${agentCommission} for Agent ID ${loan.agentId}`);
     }
 
-    // Calculate total paid to date
     const updatedPayments = await prisma.payment.findMany({
       where: { loanId: loan.id, status: "Paid" }
     });
     const totalPaidToDate = updatedPayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
-    // 🚀 FIXED: Revalidate paths across BOTH portals to keep data 100% synchronized
     revalidatePath("/");
     revalidatePath("/payments");
     revalidatePath("/accounting");
     revalidatePath(`/clients/${loan.clientId}`);
     revalidatePath("/agent-portal");
-    revalidatePath("/agent-portal/payments");
 
     return {
       success: true,
@@ -211,7 +194,6 @@ export async function processSplitPaymentAction(
   }
 }
 
-// Legacy full payment action (kept for backward compatibility)
 export async function processPaymentAction(
   loanId: number,
   amount: number,
@@ -283,7 +265,6 @@ export async function processPaymentAction(
           paymentId: payment.id
         }
       }),
-      // Immutable Audit Log
       prisma.auditLog.create({
         data: {
           type: "REPAYMENT",
@@ -301,12 +282,10 @@ export async function processPaymentAction(
     });
     const totalPaidToDate = allPayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
-    // 🚀 FIXED: Revalidate paths across BOTH portals to keep data 100% synchronized
     revalidatePath("/");
     revalidatePath("/payments");
     revalidatePath("/accounting");
     revalidatePath("/agent-portal");
-    revalidatePath("/agent-portal/payments");
 
     return {
       success: true,
