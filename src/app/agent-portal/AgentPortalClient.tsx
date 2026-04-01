@@ -33,10 +33,17 @@ interface AgentData {
   overdueCount: number; onTrackCount: number; totalActiveLoans: number;
 }
 
+// 🚀 CRITICAL FIX: BOTH formatters are now securely locked in.
 const formatCurrency = (value: number | null) => `₱${(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 const formatShortDate = (dateStr: string | Date | null) => {
   if (!dateStr) return "N/A";
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+const formatDate = (dateStr: string | Date | null) => {
+  if (!dateStr) return "N/A";
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
 // ============================================================================
@@ -105,15 +112,13 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
 
   // 📊 CALCULATING PORTFOLIO HEALTH
   let paidCount = 0; let partialCount = 0; let pendingCount = 0; let lateCount = 0;
-  let paidValue = 0; let partialValue = 0; let pendingValue = 0; let lateValue = 0;
-
   agent.activeClients.forEach(client => {
     client.loan.installments.forEach(inst => {
       const isLate = new Date(inst.dueDate) < new Date() && inst.status === "PENDING";
-      if (inst.status === "PAID") { paidCount++; paidValue += inst.expectedAmount; }
-      else if (inst.status === "PARTIAL") { partialCount++; partialValue += inst.expectedAmount; }
-      else if (isLate) { lateCount++; lateValue += inst.expectedAmount; }
-      else { pendingCount++; pendingValue += inst.expectedAmount; }
+      if (inst.status === "PAID") paidCount++;
+      else if (inst.status === "PARTIAL") partialCount++;
+      else if (isLate) lateCount++;
+      else pendingCount++;
     });
   });
 
@@ -337,3 +342,4 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     </div>
   );
 }
+
