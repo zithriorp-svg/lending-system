@@ -1,97 +1,24 @@
+@import "tailwindcss";
+
 @tailwind base;
-
 @tailwind components;
-
 @tailwind utilities;
 
 :root {
-  /* Tells mobile browsers to stop auto-inverting our colors */
-  color-scheme: dark;
+  --background: #020617;
+  --foreground: #f8fafc;
 }
 
+html,
 body {
-  background-color: #0f0f13;
-  color: #ffffff;
+  max-width: 100vw;
+  overflow-x: hidden;
+  background-color: var(--background);
+  color: var(--foreground);
 }
 
-/* Force all input text to remain white */
-input, select, textarea {
-  color: #ffffff !important;
-}
-
-/* Prevent Android/Chrome autofill from turning backgrounds white */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px #0f0f13 inset !important;
-  -webkit-text-fill-color: #ffffff !important;
-  transition: background-color 5000s ease-in-out 0s;
-}
-
-/* Hide scrollbar for the horizontal navigation */
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* Print-specific styles for contract PDF export */
-@media print {
-  /* Hide non-print elements */
-  .print\:hidden,
-  [data-print-hidden="true"] {
-    display: none !important;
-  }
-  
-  /* Force white background and black text for printing */
-  body {
-    background-color: white !important;
-    color: black !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  
-  /* Remove shadows and rounded corners for cleaner printing */
-  .print\:shadow-none {
-    box-shadow: none !important;
-  }
-  
-  /* Ensure borders are black for printing */
-  .print\:border-black {
-    border-color: black !important;
-  }
-  
-  /* Ensure backgrounds are white */
-  .print\:bg-white {
-    background-color: white !important;
-  }
-  
-  /* Ensure text is black */
-  .print\:text-black {
-    color: black !important;
-  }
-  
-  /* Page break handling */
-  .print\:break-before-page {
-    break-before: page;
-  }
-  
-  .print\:break-after-page {
-    break-after: page;
-  }
-  
-  /* Avoid page breaks inside important elements */
-  .print\:break-inside-avoid {
-    break-inside: avoid;
-  }
-  
-  /* Default page margins */
-  @page {
-    margin: 0.5in;
-    size: A4;
-  }
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
 }
