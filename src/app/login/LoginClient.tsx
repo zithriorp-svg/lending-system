@@ -108,23 +108,29 @@ export default function LoginClient({ showSeedButton }: LoginClientProps) {
           </button>
         </form>
 
-        {/* UNBREAKABLE RAW TEXT PORTALS */}
-        <div className="mt-8 flex flex-col items-center space-y-3 border-t border-zinc-800 pt-6 w-full max-w-sm mx-auto">
-          <p className="text-xs text-zinc-500 uppercase tracking-widest mb-2">System Portals</p>
+        {/* SYSTEM PORTALS - CLICKABLE LINKS */}
+        <div className="mt-8 flex flex-col gap-3 border-t border-zinc-800 pt-6 w-full max-w-sm mx-auto">
+          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest text-center mb-2">System Portals</p>
           
-          <div className="w-full bg-zinc-900/50 border border-zinc-800 rounded p-3 text-center">
-            <p className="text-xs text-zinc-500 mb-1">💼 Agent Gateway</p>
-            <p className="text-xs font-mono text-zinc-300 select-all break-all">
-              https://my-project-lovat-three-98.vercel.app/agent-portal
-            </p>
-          </div>
+          <a 
+            href="/agent-portal" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="w-full bg-zinc-900/50 border border-zinc-700/50 hover:border-blue-500/50 rounded-xl p-4 text-center transition-all flex flex-col items-center justify-center gap-1 group cursor-pointer"
+          >
+            <span className="text-sm font-bold text-slate-300 group-hover:text-blue-400 transition-colors">💼 Agent Gateway</span>
+            <span className="text-[10px] text-zinc-500 font-mono">Click to open in new tab ↗</span>
+          </a>
 
-          <div className="w-full bg-zinc-900/50 border border-zinc-800 rounded p-3 text-center">
-            <p className="text-xs text-zinc-500 mb-1">🏛️ Client Vault</p>
-            <p className="text-xs font-mono text-zinc-300 select-all break-all">
-              https://my-project-lovat-three-98.vercel.app/portal
-            </p>
-          </div>
+          <a 
+            href="/portal" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="w-full bg-zinc-900/50 border border-zinc-700/50 hover:border-purple-500/50 rounded-xl p-4 text-center transition-all flex flex-col items-center justify-center gap-1 group cursor-pointer"
+          >
+            <span className="text-sm font-bold text-slate-300 group-hover:text-purple-400 transition-colors">🏛️ Client Vault</span>
+            <span className="text-[10px] text-zinc-500 font-mono">Click to open in new tab ↗</span>
+          </a>
         </div>
 
         <p className="text-center text-zinc-600 text-xs">
