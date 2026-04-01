@@ -13,31 +13,38 @@ import AgentPortalClient from "@/app/agent-portal/AgentPortalClient";
 
 export const dynamic = "force-dynamic";
 
-// WE NEED THIS FOR THE FULL LEDGER FB ALERTS
-const serializeLoan = (loan: any) => ({
-  id: loan.id,
-  principal: Number(loan.principal),
-  interestRate: Number(loan.interestRate),
-  termDuration: loan.termDuration,
-  totalRepayment: Number(loan.totalRepayment),
-  totalPaid: Number(loan.totalPaid),
-  remainingBalance: Number(loan.remainingBalance),
-  startDate: loan.startDate,
-  endDate: loan.endDate,
-  status: loan.status,
-  goodPayerDiscountRevoked: loan.goodPayerDiscountRevoked,
-  installments: loan.installments?.map((inst: any) => ({
-    period: inst.period,
-    dueDate: inst.dueDate,
-    expectedAmount: Number(inst.expectedAmount),
-    principal: Number(inst.principal),
-    interest: Number(inst.interest),
-    penaltyFee: Number(inst.penaltyFee),
-    status: inst.status,
-    paymentDate: inst.paymentDate,
-    amountPaid: Number(inst.amountPaid)
-  })) || []
-});
+// 🚀 BULLETPROOF SERIALIZATION: Eliminates all "NaN" errors for FB copy-paste
+const serializeLoan = (loan: any) => {
+  const safeTotalRepayment = Number(loan.totalRepayment || 0);
+  const computedTotalPaid = loan.installments?.reduce((sum: number, inst: any) => sum + Number(inst.amountPaid || 0), 0) || 0;
+  const safeTotalPaid = Number(loan.totalPaid || computedTotalPaid);
+  const safeRemainingBalance = Number(loan.remainingBalance || (safeTotalRepayment - safeTotalPaid));
+
+  return {
+    id: loan.id,
+    principal: Number(loan.principal || 0),
+    interestRate: Number(loan.interestRate || 0),
+    termDuration: loan.termDuration || 0,
+    totalRepayment: safeTotalRepayment,
+    totalPaid: safeTotalPaid,
+    remainingBalance: safeRemainingBalance,
+    startDate: loan.startDate,
+    endDate: loan.endDate,
+    status: loan.status,
+    goodPayerDiscountRevoked: loan.goodPayerDiscountRevoked || false,
+    installments: loan.installments?.map((inst: any) => ({
+      period: inst.period,
+      dueDate: inst.dueDate,
+      expectedAmount: Number(inst.expectedAmount || 0),
+      principal: Number(inst.principal || 0),
+      interest: Number(inst.interest || 0),
+      penaltyFee: Number(inst.penaltyFee || 0),
+      status: inst.status,
+      paymentDate: inst.paymentDate,
+      amountPaid: Number(inst.amountPaid || 0)
+    })) || []
+  };
+};
 
 export default async function Dashboard() {
   const cookieStore = await cookies();
@@ -57,7 +64,6 @@ export default async function Dashboard() {
 
   if (!isAdmin) {
     if (userName && userName !== "User") {
-      // Search the database for the exact username (e.g. ralphbillani_8118)
       agentData = await prisma.agent.findFirst({
         where: {
           OR: [
@@ -104,7 +110,7 @@ export default async function Dashboard() {
     clientName: `${i.loan.client.firstName} ${i.loan.client.lastName}`, firstName: i.loan.client.firstName, phone: i.loan.client.phone || '',
     agentName: i.loan.agent?.name || null, daysLate: getDaysLate(i.dueDate), penaltyFee: Number(i.penaltyFee) || 0,
     fbProfileUrl: i.loan.client.application?.fbProfileUrl || null, messengerId: i.loan.client.application?.messengerId || null,
-    loan: serializeLoan(i.loan)
+    loan: serializeLoan(i.loan) // The bulletproofed loan is passed here
   }));
 
   const alerts = { overdue: mapAlerts(overdueInstallments), dueToday: mapAlerts(dueTodayInstallments), upcoming: mapAlerts(upcomingInstallments) };
@@ -117,12 +123,19 @@ export default async function Dashboard() {
     agentData.commissions.forEach(comm => { if (!comm.isPaidOut) pendingCommission += Number(comm.amount); totalLifetimeEarnings += Number(comm.amount); });
     
     const activeClients = agentData.loans.map(loan => {
-      totalRiskLiability += Number(loan.remainingBalance); totalCollected += Number(loan.totalPaid);
+      // Bulletproof Matrix Chart Math
+      const computedTotalPaid = loan.installments?.reduce((sum: number, inst: any) => sum + Number(inst.amountPaid || 0), 0) || 0;
+      const safeTotalPaid = Number(loan.totalPaid || computedTotalPaid);
+      const safeRemaining = Number(loan.remainingBalance || (Number(loan.totalRepayment || 0) - safeTotalPaid));
+
+      totalRiskLiability += safeRemaining; 
+      totalCollected += safeTotalPaid;
+
       const nextPending = loan.installments.find(i => i.status === "PENDING" || i.status === "PARTIAL");
       const daysLate = nextPending && new Date(nextPending.dueDate) < today ? Math.floor((today.getTime() - new Date(nextPending.dueDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
       return {
         loanId: loan.id, clientId: loan.clientId, clientName: `${loan.client.firstName} ${loan.client.lastName}`, firstName: loan.client.firstName,
-        phone: loan.client.phone || '', originalPrincipal: Number(loan.principal), remainingBalance: Number(loan.remainingBalance),
+        phone: loan.client.phone || '', originalPrincipal: Number(loan.principal), remainingBalance: safeRemaining,
         nextDueDate: nextPending?.dueDate ? new Date(nextPending.dueDate).toISOString() : null, nextDueAmount: nextPending ? Number(nextPending.expectedAmount) : null,
         nextDuePeriod: nextPending ? nextPending.period : null, status: daysLate > 0 ? 'OVERDUE' : 'ON_TRACK', daysLate,
         fbProfileUrl: loan.client.fbProfileUrl || null, messengerId: loan.client.messengerId || null, loan: serializeLoan(loan)
