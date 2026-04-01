@@ -10,6 +10,9 @@ import QuickActionsGrid from "@/components/QuickActionsGrid";
 import TimeTravelDebug from "@/components/TimeTravelDebug";
 import { getActivePortfolio } from "@/lib/portfolio";
 
+// 🚀 FUSION: We are importing the Tactical Agent HUD to take over the screen when an Agent logs in!
+import AgentPortalClient from "@/app/agent-portal/AgentPortalClient";
+
 export const dynamic = "force-dynamic";
 
 // WE NEED THIS FOR THE FULL LEDGER FB ALERTS
@@ -43,8 +46,92 @@ export default async function Dashboard() {
   const userRole = cookieStore.get("user_role")?.value || "AGENT";
   const isAdmin = userRole === "ADMIN";
   const userName = cookieStore.get("user_name")?.value || "User";
+  const agentIdStr = cookieStore.get("agent_id")?.value;
+  const agentId = agentIdStr ? parseInt(agentIdStr) : null;
 
   const portfolio = await getActivePortfolio();
+
+  // ============================================================================
+  // 🚀 THE FUSION INTERCEPTOR: If it's an Agent, deploy the Tactical HUD!
+  // ============================================================================
+  if (!isAdmin && agentId) {
+    const agentData = await prisma.agent.findUnique({
+      where: { id: agentId },
+      include: {
+        loans: {
+          where: { status: 'ACTIVE' },
+          include: { client: true, installments: { orderBy: { period: 'asc' } } }
+        },
+        commissions: true
+      }
+    });
+
+    if (agentData) {
+      // Calculate Agent Stats for the HUD
+      const today = new Date();
+      let totalRiskLiability = 0;
+      let totalCollected = 0;
+      let pendingCommission = 0;
+      let totalLifetimeEarnings = 0;
+
+      agentData.commissions.forEach(comm => {
+        if (!comm.isPaidOut) pendingCommission += Number(comm.amount);
+        totalLifetimeEarnings += Number(comm.amount);
+      });
+
+      const activeClients = agentData.loans.map(loan => {
+        totalRiskLiability += Number(loan.remainingBalance);
+        totalCollected += Number(loan.totalPaid);
+
+        const nextPending = loan.installments.find(i => i.status === "PENDING" || i.status === "PARTIAL");
+        const daysLate = nextPending && new Date(nextPending.dueDate) < today 
+          ? Math.floor((today.getTime() - new Date(nextPending.dueDate).getTime()) / (1000 * 60 * 60 * 24)) 
+          : 0;
+
+        return {
+          loanId: loan.id,
+          clientId: loan.clientId,
+          clientName: `${loan.client.firstName} ${loan.client.lastName}`,
+          firstName: loan.client.firstName,
+          phone: loan.client.phone || '',
+          originalPrincipal: Number(loan.principal),
+          remainingBalance: Number(loan.remainingBalance),
+          nextDueDate: nextPending?.dueDate ? new Date(nextPending.dueDate).toISOString() : null,
+          nextDueAmount: nextPending ? Number(nextPending.expectedAmount) : null,
+          nextDuePeriod: nextPending ? nextPending.period : null,
+          status: daysLate > 0 ? 'OVERDUE' : 'ON_TRACK',
+          daysLate,
+          fbProfileUrl: loan.client.fbProfileUrl || null,
+          messengerId: loan.client.messengerId || null,
+          loan: serializeLoan(loan)
+        };
+      });
+
+      const processedAgentData = {
+        id: agentData.id,
+        name: agentData.name,
+        phone: agentData.phone,
+        username: agentData.username,
+        createdAt: agentData.createdAt,
+        activeClients: activeClients as any,
+        totalRiskLiability,
+        pendingCommission,
+        totalLifetimeEarnings,
+        totalCollected,
+        commissionsCount: agentData.commissions.length,
+        overdueCount: activeClients.filter(c => c.status === 'OVERDUE').length,
+        onTrackCount: activeClients.filter(c => c.status === 'ON_TRACK').length,
+        totalActiveLoans: agentData.loans.length
+      };
+
+      // 💥 Intercept complete! Rendering the Agent HUD instead of the classic dashboard.
+      return <AgentPortalClient agent={processedAgentData} />;
+    }
+  }
+
+  // ============================================================================
+  // NORMAL MASTER ADMIN DASHBOARD (BELOW)
+  // ============================================================================
 
   const portfolioRecords = await prisma.systemPortfolio.findMany({
     select: { id: true, name: true },
@@ -237,3 +324,4 @@ export default async function Dashboard() {
     </div>
   );
 }
+
