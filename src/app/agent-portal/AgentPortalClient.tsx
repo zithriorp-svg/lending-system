@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { generateLedgerSummary, type LoanData } from "@/utils/notifications";
 
 interface InstallmentForLedger {
   period: number; dueDate: Date | string; expectedAmount: number;
@@ -33,8 +32,18 @@ interface AgentData {
   overdueCount: number; onTrackCount: number; totalActiveLoans: number;
 }
 
-const formatCurrency = (value: number) => `₱${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const formatShortDate = (date: Date | string): string => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+// 🚀 BUG FIXED: Added all missing formatters and made them bulletproof against null values
+const formatCurrency = (value: number | null) => `₱${(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const formatDate = (dateStr: string | Date | null) => {
+  if (!dateStr) return "N/A";
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const formatShortDate = (dateStr: string | Date | null) => {
+  if (!dateStr) return "N/A";
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
 
 // ============================================================================
 // NOTIFICATION ENGINES
@@ -110,8 +119,8 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     { week: 'W12', capitalOut: agent.totalRiskLiability, capitalIn: agent.totalCollected }
   ];
   
-  // Dynamic scaling for native CSS chart
-  const maxChartValue = Math.max(...chartData.map(d => Math.max(d.capitalOut, d.capitalIn, 1)));
+  // 🚀 BUG FIXED: Guaranteed minimum value of 1000 so the chart never crashes from dividing by 0
+  const maxChartValue = Math.max(...chartData.map(d => Math.max(d.capitalOut, d.capitalIn)), 1000);
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6 pb-20 font-sans">
@@ -162,17 +171,17 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
          </div>
 
          {/* PURE HTML/CSS BAR CHART */}
-         <div className="h-48 w-full flex items-end justify-between gap-1 md:gap-2 border-b border-zinc-800 pb-2 relative">
+         <div className="h-48 w-full flex items-end justify-between gap-1 md:gap-2 border-b border-zinc-800 pb-2 relative mt-12">
             {chartData.map((d, i) => (
               <div key={i} className="flex flex-col items-center flex-1 h-full justify-end group relative">
                 
                 {/* Hover Tooltip */}
-                <div className="absolute -top-14 opacity-0 group-hover:opacity-100 bg-zinc-800 border border-zinc-700 text-white text-[10px] p-2 rounded-lg pointer-events-none transition-opacity z-10 whitespace-nowrap shadow-xl">
+                <div className="absolute -top-16 opacity-0 group-hover:opacity-100 bg-zinc-800 border border-zinc-700 text-white text-[10px] p-2 rounded-lg pointer-events-none transition-opacity z-10 whitespace-nowrap shadow-xl">
                   <p className="text-emerald-400 font-bold">IN: {formatCurrency(d.capitalIn)}</p>
                   <p className="text-rose-400 font-bold">OUT: {formatCurrency(d.capitalOut)}</p>
                 </div>
                 
-                <div className="flex items-end justify-center gap-0.5 md:gap-1 w-full h-[85%]">
+                <div className="flex items-end justify-center gap-0.5 md:gap-1 w-full h-full">
                   <div className="w-1/3 max-w-[16px] bg-gradient-to-t from-rose-900 to-rose-500 rounded-t-sm transition-all duration-500" style={{ height: `${Math.max((d.capitalOut / maxChartValue) * 100, 2)}%` }}></div>
                   <div className="w-1/3 max-w-[16px] bg-gradient-to-t from-emerald-900 to-emerald-500 rounded-t-sm transition-all duration-500" style={{ height: `${Math.max((d.capitalIn / maxChartValue) * 100, 2)}%` }}></div>
                 </div>
