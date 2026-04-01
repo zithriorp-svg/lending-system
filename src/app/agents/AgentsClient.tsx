@@ -430,9 +430,17 @@ export default function AgentsClient() {
                 </div>
 
                 {/* Agent Identity */}
-                <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+                <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl relative">
+                  
+                  {/* 🚀 NEW: CONTRACT PDF BUTTON */}
+                  <div className="absolute top-4 right-4">
+                     <Link href={`/agent-application/receipt?phone=${dossier.phone}`} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg transition-all border border-emerald-400/50">
+                       📄 View PDF Contract
+                     </Link>
+                  </div>
+
                   <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-4">Card 1: Agent Identity</h2>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-4 mt-8">
                     <div>
                       <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Agent Name</p>
                       <p className="text-2xl font-bold text-white">{dossier.name}</p>
@@ -517,4 +525,3 @@ export default function AgentsClient() {
     </div>
   );
 }
-
