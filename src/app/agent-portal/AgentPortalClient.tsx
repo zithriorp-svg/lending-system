@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { generateLedgerSummary, type LoanData } from "@/utils/notifications";
+
+// 🚀 TROJAN HORSE: Importing the Master Payment Terminal directly into the Agent Portal
+import PaymentTerminal from "@/app/payments/PaymentTerminal";
 
 interface InstallmentForLedger {
   period: number; dueDate: Date | string; expectedAmount: number;
@@ -33,7 +36,6 @@ interface AgentData {
   overdueCount: number; onTrackCount: number; totalActiveLoans: number;
 }
 
-// 🚀 CRITICAL FIX: BOTH formatters are now securely locked in.
 const formatCurrency = (value: number | null) => `₱${(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const formatShortDate = (dateStr: string | Date | null) => {
@@ -87,6 +89,7 @@ function FBNotifyButton({ message, clientName, fbProfileUrl, messengerId }: { me
 // ============================================================================
 export default function AgentPortalClient({ agent }: { agent: AgentData }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loggingOut, setLoggingOut] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -98,6 +101,7 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     try { await fetch('/api/agent-auth/logout', { method: 'POST' }); router.push('/agent-portal'); } catch (e) {} finally { setLoggingOut(false); }
   };
 
+  // HYDRATION ARMOR
   if (!mounted) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
@@ -106,6 +110,46 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
       </div>
     );
   }
+
+  // 🚀 THE SECURITY BYPASS INTERCEPTOR 
+  // If the URL says "?action=pay", intercept the screen and show the Payment Engine directly!
+  const action = searchParams.get("action");
+  
+  if (action === "pay") {
+    // Format the agent's clients to match the Master Payment Terminal's requirements
+    const loanOptions = agent.activeClients.map(c => ({
+      id: c.loanId,
+      clientId: c.clientId,
+      client: {
+        firstName: c.firstName,
+        lastName: c.clientName.replace(c.firstName, '').trim()
+      }
+    }));
+
+    return (
+      <div className="min-h-screen bg-black p-2 md:p-4">
+        <div className="max-w-4xl mx-auto space-y-4 pb-20 font-sans">
+          <div className="flex justify-between items-center pt-2 pb-4 border-b border-zinc-800">
+            <Link
+              href="/agent-portal"
+              className="bg-emerald-900/50 hover:bg-emerald-800 border border-emerald-500/50 text-emerald-400 px-6 py-3 rounded-xl text-xs md:text-sm font-black uppercase tracking-widest transition-all shadow-lg"
+            >
+              ← Return to Tactical HUD
+            </Link>
+          </div>
+          
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl md:p-6 shadow-2xl">
+            {/* Deploying the core engine securely inside the portal */}
+            <PaymentTerminal loans={loanOptions} portfolio="Agent Collection Zone" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================================
+  // NORMAL TACTICAL HUD VIEW (BELOW)
+  // ============================================================================
 
   const overdueClients = agent.activeClients.filter(c => c.status === 'OVERDUE');
   const onTrackClients = agent.activeClients.filter(c => c.status === 'ON_TRACK');
@@ -172,7 +216,7 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        {/* 🚀 IRONCLAD NATIVE CHART: CASH FLOW VELOCITY MATRIX */}
+        {/* IRONCLAD NATIVE CHART: CASH FLOW VELOCITY MATRIX */}
         <div className="md:col-span-2 bg-black border border-[#00ff00]/30 rounded-2xl p-6 shadow-xl">
            <div className="flex justify-between items-center mb-6">
               <h2 className="text-sm font-bold text-[#00ff00] uppercase tracking-widest flex items-center gap-2">
@@ -213,14 +257,13 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
            </div>
         </div>
 
-        {/* 🚀 IRONCLAD NATIVE CHART: PORTFOLIO HEALTH (DONUT) */}
+        {/* IRONCLAD NATIVE CHART: PORTFOLIO HEALTH (DONUT) */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl md:col-span-2">
           <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-8">
             Micro-Portfolio Health (Installments)
           </h2>
           <div className="flex flex-col md:flex-row items-center justify-center gap-12">
             
-            {/* PURE CSS DONUT CHART */}
             <div className="relative w-48 h-48 rounded-full shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]" style={{
                 background: `conic-gradient(
                   #f43f5e 0% ${latePct}%,
@@ -235,7 +278,6 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
               </div>
             </div>
 
-            {/* PURE CSS LEGEND */}
             <div className="flex flex-col gap-4">
                <div className="flex items-center justify-between w-32 border-b border-zinc-800 pb-2">
                  <div className="flex items-center gap-2"><div className="w-3 h-3 bg-rose-500 rounded-sm"></div><span className="text-xs text-zinc-400">Late</span></div>
@@ -301,7 +343,8 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
                 </div>
                 
                 <div className="grid grid-cols-2 gap-2 mt-4">
-                  <Link href={`/payments?clientId=${client.clientId}`} className="flex items-center justify-center bg-rose-600 hover:bg-rose-500 text-white text-xs font-black uppercase tracking-wider py-3 rounded-xl transition-colors shadow-lg">
+                  {/* 🚀 TROJAN HORSE: Route directly to the parameter bypass */}
+                  <Link href={`/agent-portal?action=pay&clientId=${client.clientId}`} className="flex items-center justify-center bg-rose-600 hover:bg-rose-500 text-white text-xs font-black uppercase tracking-wider py-3 rounded-xl transition-colors shadow-lg">
                     ⚡ Process Payment
                   </Link>
                   <FBNotifyButton message={generateOverdueMessage(client.clientName, client.nextDuePeriod || 1, client.nextDueDate || new Date(), client.daysLate, client.nextDueAmount || 0, client.loan)} clientName={client.clientName} fbProfileUrl={client.fbProfileUrl} messengerId={client.messengerId} />
@@ -331,7 +374,8 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-black text-emerald-400 mr-2">{formatCurrency(client.nextDueAmount || 0)}</p>
-                    <Link href={`/payments?clientId=${client.clientId}`} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase rounded-lg transition-colors border border-zinc-700">Process</Link>
+                    {/* 🚀 TROJAN HORSE: Route directly to the parameter bypass */}
+                    <Link href={`/agent-portal?action=pay&clientId=${client.clientId}`} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase rounded-lg transition-colors border border-zinc-700">Process</Link>
                   </div>
                </div>
              ))}
@@ -342,4 +386,3 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     </div>
   );
 }
-
