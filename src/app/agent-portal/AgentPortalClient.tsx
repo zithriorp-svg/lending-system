@@ -124,10 +124,9 @@ function FBNotifyButton({ message, clientName, fbProfileUrl, messengerId }: { me
 export default function AgentPortalClient({ agent }: { agent: AgentData }) {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
-  
-  // 🚀 HYDRATION ARMOR: This prevents the server from crashing when trying to draw charts or timezone dates.
   const [mounted, setMounted] = useState(false);
 
+  // 🚀 THE HYDRATION ARMOR: Prevents Next.js from rendering charts & dates on the server
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -138,12 +137,12 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     try { await fetch('/api/agent-auth/logout', { method: 'POST' }); router.push('/agent-portal'); } catch (e) {} finally { setLoggingOut(false); }
   };
 
-  // If the browser hasn't taken over yet, show a secure loading screen.
+  // Prevent crash by showing loading state until browser is fully ready
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center">
-        <div className="animate-spin w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full mb-4"></div>
-        <p className="text-emerald-500 font-mono text-xs uppercase tracking-widest">Booting Tactical HUD...</p>
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
+        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-emerald-400 font-mono text-xs uppercase tracking-widest">Booting Tactical HUD...</p>
       </div>
     );
   }
