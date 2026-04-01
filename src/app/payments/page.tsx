@@ -1,15 +1,45 @@
 import { prisma } from "@/lib/db";
 import PaymentTerminal from "./PaymentTerminal";
 import { getActivePortfolio } from "@/lib/portfolio";
+import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
 export default async function PaymentsPage() {
   const portfolio = await getActivePortfolio();
   
-  // Fetch all active loans in this portfolio
+  const cookieStore = await cookies();
+  const userRole = cookieStore.get("user_role")?.value || "AGENT";
+  const userName = cookieStore.get("user_name")?.value;
+  const isAdmin = userRole === "ADMIN";
+
+  // ============================================================================
+  // 🚀 AGENT IDENTITY PROTOCOL: Lock the dropdown to the specific agent
+  // ============================================================================
+  let agentFilter = {};
+  
+  if (!isAdmin && userName && userName !== "User") {
+    const agentData = await prisma.agent.findFirst({
+      where: {
+        OR: [
+          { username: userName },
+          { name: userName }
+        ]
+      }
+    });
+    
+    if (agentData) {
+      agentFilter = { agentId: agentData.id };
+    }
+  }
+
+  // 🔒 STRICT FETCH: Get only ACTIVE loans, filtered by the Agent's ID (if applicable)
   const loans = await prisma.loan.findMany({
-    where: { portfolio },
+    where: { 
+      portfolio,
+      status: "ACTIVE",
+      ...agentFilter 
+    },
     include: { client: true },
     orderBy: { id: 'desc' }
   });
