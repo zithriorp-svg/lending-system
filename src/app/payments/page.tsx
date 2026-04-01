@@ -14,19 +14,6 @@ export default async function PaymentsPage() {
     orderBy: { id: 'desc' }
   });
 
-  // Get loan IDs for this portfolio
-  const loanIds = loans.map(l => l.id);
-
-  // Fetch recent payments for loans in this portfolio
-  const recentPayments = await prisma.payment.findMany({
-    where: { 
-      loanId: { in: loanIds }
-    },
-    include: { loan: { include: { client: true } } },
-    orderBy: { paymentDate: 'desc' },
-    take: 10
-  });
-
   // Format for client component - include clientId for deep-linking
   const loanOptions = loans.map(loan => ({
     id: loan.id,
