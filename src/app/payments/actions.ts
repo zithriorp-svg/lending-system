@@ -167,11 +167,13 @@ export async function processSplitPaymentAction(
     });
     const totalPaidToDate = updatedPayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
-    // Revalidate paths
+    // 🚀 FIXED: Revalidate paths across BOTH portals to keep data 100% synchronized
     revalidatePath("/");
     revalidatePath("/payments");
     revalidatePath("/accounting");
     revalidatePath(`/clients/${loan.clientId}`);
+    revalidatePath("/agent-portal");
+    revalidatePath("/agent-portal/payments");
 
     return {
       success: true,
@@ -299,9 +301,12 @@ export async function processPaymentAction(
     });
     const totalPaidToDate = allPayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
+    // 🚀 FIXED: Revalidate paths across BOTH portals to keep data 100% synchronized
     revalidatePath("/");
     revalidatePath("/payments");
     revalidatePath("/accounting");
+    revalidatePath("/agent-portal");
+    revalidatePath("/agent-portal/payments");
 
     return {
       success: true,
