@@ -12,8 +12,11 @@ export default function ApplyLinksTrigger({ portfolios = [] }: { portfolios: any
     setMounted(true);
   }, []);
 
-  const handleCopy = (id: string | number) => {
-    const link = `${window.location.origin}/apply?portfolioId=${id}`;
+  const handleCopy = (id: string | number, isAgentLink: boolean = false) => {
+    // Determine which link to generate based on what was clicked
+    const link = isAgentLink 
+      ? `${window.location.origin}/agent-application` 
+      : `${window.location.origin}/apply?portfolioId=${id}`;
     
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(link);
@@ -40,9 +43,34 @@ export default function ApplyLinksTrigger({ portfolios = [] }: { portfolios: any
   const modalContent = (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <div style={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '400px', zIndex: 1000000, color: 'white' }}>
-        <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#60a5fa', textTransform: 'uppercase', marginBottom: '16px' }}>Application Links</h2>
+        <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#60a5fa', textTransform: 'uppercase', marginBottom: '16px' }}>Master Application Links</h2>
         
         <div style={{ maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          
+          {/* 🚨 NEW: AGENT RECRUITMENT LINK (Distinct Purple Styling) */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#3b0764', border: '1px solid #7e22ce', padding: '16px', borderRadius: '8px' }}>
+            <span style={{ fontWeight: 'bold', color: '#d8b4fe' }}>⭐ Agent Recruitment</span>
+            <button
+              onClick={() => handleCopy('agent', true)}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                border: 'none',
+                backgroundColor: copiedId === 'agent' ? '#059669' : '#9333ea',
+                color: 'white'
+              }}
+            >
+              {copiedId === 'agent' ? '✓ Copied' : 'Copy Link'}
+            </button>
+          </div>
+
+          <hr style={{ borderColor: '#3f3f46', margin: '4px 0' }} />
+          <h3 style={{ fontSize: '12px', color: '#a1a1aa', textTransform: 'uppercase', fontWeight: 'bold' }}>Client Portfolios</h3>
+
+          {/* STANDARD PORTFOLIO LINKS */}
           {portfolios && portfolios.length > 0 ? (
             portfolios.map((p) => (
               <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#27272a', border: '1px solid #3f3f46', padding: '16px', borderRadius: '8px' }}>
@@ -65,7 +93,7 @@ export default function ApplyLinksTrigger({ portfolios = [] }: { portfolios: any
               </div>
             ))
           ) : (
-            <p style={{ color: '#71717a', fontSize: '14px', textAlign: 'center', padding: '16px 0' }}>No portfolios available.</p>
+            <p style={{ color: '#71717a', fontSize: '14px', textAlign: 'center', padding: '16px 0' }}>No client portfolios available.</p>
           )}
         </div>
 
