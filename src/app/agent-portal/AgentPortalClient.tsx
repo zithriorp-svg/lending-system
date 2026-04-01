@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DelinquencyAlerts from "@/components/DelinquencyAlerts";
 import QuickActionsGrid from "@/components/QuickActionsGrid";
+// 🚀 IMPORTING THE MASTER ADMIN LOGOUT PROTOCOL
+import LockVaultButton from "@/components/LockVaultButton"; 
 
 interface AgentData {
   id: number; name: string; phone: string; username?: string | null; createdAt: Date;
@@ -16,16 +18,9 @@ const formatCurrency = (value: number | null) => `₱${(value || 0).toLocaleStri
 
 export default function AgentPortalClient({ agent, alerts, portfolios }: { agent: AgentData, alerts?: any, portfolios?: any[] }) {
   const router = useRouter();
-  const [loggingOut, setLoggingOut] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
-
-  const handleLogout = async () => {
-    if (!confirm("Logout from Agent Portal?")) return;
-    setLoggingOut(true);
-    try { await fetch('/api/agent-auth/logout', { method: 'POST' }); router.push('/agent-portal'); } catch (e) {} finally { setLoggingOut(false); }
-  };
 
   if (!mounted) {
     return (
@@ -84,9 +79,10 @@ export default function AgentPortalClient({ agent, alerts, portfolios }: { agent
             <p className="text-[10px] text-emerald-400 font-mono tracking-widest mt-1">SECURE UPLINK ESTABLISHED</p>
           </div>
         </div>
-        <button onClick={handleLogout} disabled={loggingOut} className="text-[10px] font-bold uppercase tracking-widest bg-rose-900/30 hover:bg-rose-900/50 text-rose-400 px-4 py-2 rounded-lg border border-rose-500/30 transition-colors">
-          {loggingOut ? "DISCONNECTING..." : "DISCONNECT"}
-        </button>
+        
+        {/* 🚀 THE MASTER LOCK BUTTON DEPLOYED FOR AGENTS */}
+        <LockVaultButton />
+
       </div>
 
       {/* AGENT IDENTITY STRIP */}
@@ -208,7 +204,7 @@ export default function AgentPortalClient({ agent, alerts, portfolios }: { agent
         </div>
       </div>
 
-      {/* 🚀 THE FUSION: Classic Proactive HUD and Quick Actions (Now 100% Safe) */}
+      {/* THE FUSION: Classic Proactive HUD and Quick Actions */}
       <DelinquencyAlerts overdue={alerts?.overdue || []} dueToday={alerts?.dueToday || []} upcoming={alerts?.upcoming || []} />
       <QuickActionsGrid isAdmin={false} portfolios={portfolios || []} />
 
