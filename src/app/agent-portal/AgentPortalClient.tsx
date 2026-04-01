@@ -4,20 +4,6 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { generateLedgerSummary, type LoanData } from "@/utils/notifications";
-// 🚀 THE REAL ENGINE: Master Admin Analytics Charts ported directly!
-import {
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer
-} from "recharts";
 
 interface InstallmentForLedger {
   period: number; dueDate: Date | string; expectedAmount: number;
@@ -117,26 +103,23 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
   const overdueClients = agent.activeClients.filter(c => c.status === 'OVERDUE');
   const onTrackClients = agent.activeClients.filter(c => c.status === 'ON_TRACK');
 
-  // 📊 CALCULATING PORTFOLIO HEALTH (DONUT CHART DATA)
+  // 📊 CALCULATING PORTFOLIO HEALTH
   let paidCount = 0; let partialCount = 0; let pendingCount = 0; let lateCount = 0;
-  let paidValue = 0; let partialValue = 0; let pendingValue = 0; let lateValue = 0;
-
   agent.activeClients.forEach(client => {
     client.loan.installments.forEach(inst => {
       const isLate = new Date(inst.dueDate) < new Date() && inst.status === "PENDING";
-      if (inst.status === "PAID") { paidCount++; paidValue += inst.expectedAmount; }
-      else if (inst.status === "PARTIAL") { partialCount++; partialValue += inst.expectedAmount; }
-      else if (isLate) { lateCount++; lateValue += inst.expectedAmount; }
-      else { pendingCount++; pendingValue += inst.expectedAmount; }
+      if (inst.status === "PAID") paidCount++;
+      else if (inst.status === "PARTIAL") partialCount++;
+      else if (isLate) lateCount++;
+      else pendingCount++;
     });
   });
 
-  const portfolioHealthData = [
-    { name: 'Late', value: lateCount, amount: lateValue, color: '#f43f5e' },
-    { name: 'Paid', value: paidCount, amount: paidValue, color: '#10b981' },
-    { name: 'Partial', value: partialCount, amount: partialValue, color: '#38bdf8' },
-    { name: 'Pending', value: pendingCount, amount: pendingValue, color: '#eab308' }
-  ].filter(d => d.value > 0);
+  const totalInst = paidCount + partialCount + pendingCount + lateCount;
+  const latePct = totalInst > 0 ? (lateCount / totalInst) * 100 : 0;
+  const paidPct = totalInst > 0 ? (paidCount / totalInst) * 100 : 0;
+  const partialPct = totalInst > 0 ? (partialCount / totalInst) * 100 : 0;
+  const pendingPct = totalInst > 0 ? (pendingCount / totalInst) * 100 : 100; // Default pending if no loans
 
   // 📊 CASH FLOW VELOCITY MATRIX DATA
   const chartData = [
@@ -147,6 +130,8 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
     { week: 'W9', capitalOut: agent.totalRiskLiability * 0.9, capitalIn: agent.totalCollected * 0.8 },
     { week: 'W12', capitalOut: agent.totalRiskLiability, capitalIn: agent.totalCollected }
   ];
+  
+  const maxChartValue = Math.max(...chartData.map(d => Math.max(d.capitalOut, d.capitalIn)), 1000);
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6 pb-20 font-sans">
@@ -178,6 +163,96 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        {/* 🚀 IRONCLAD NATIVE CHART: CASH FLOW VELOCITY MATRIX */}
+        <div className="md:col-span-2 bg-black border border-[#00ff00]/30 rounded-2xl p-6 shadow-xl">
+           <div className="flex justify-between items-center mb-6">
+              <h2 className="text-sm font-bold text-[#00ff00] uppercase tracking-widest flex items-center gap-2">
+                <span className="animate-pulse">●</span> Cash Flow Velocity
+              </h2>
+              <span className="text-[10px] font-mono text-zinc-500 bg-zinc-800 px-2 py-1 rounded">90-DAY MATRIX</span>
+           </div>
+           
+           <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="bg-rose-950/20 border border-rose-900/50 rounded-xl p-4">
+                 <p className="text-[10px] text-rose-400 font-bold uppercase tracking-widest mb-1">Capital Deployed</p>
+                 <p className="text-xl md:text-2xl font-black text-rose-500">{formatCurrency(agent.totalRiskLiability)}</p>
+              </div>
+              <div className="bg-emerald-950/20 border border-emerald-900/50 rounded-xl p-4">
+                 <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mb-1">Capital Recovered</p>
+                 <p className="text-xl md:text-2xl font-black text-emerald-500">{formatCurrency(agent.totalCollected)}</p>
+              </div>
+           </div>
+
+           <div className="h-48 w-full flex items-end justify-between gap-1 md:gap-2 border-b border-zinc-800 pb-2 relative mt-12">
+              {chartData.map((d, i) => (
+                <div key={i} className="flex flex-col items-center flex-1 h-full justify-end group relative">
+                  <div className="absolute -top-16 opacity-0 group-hover:opacity-100 bg-zinc-800 border border-zinc-700 text-white text-[10px] p-2 rounded-lg pointer-events-none transition-opacity z-10 whitespace-nowrap shadow-xl">
+                    <p className="text-[#00ff00] font-bold">IN: {formatCurrency(d.capitalIn)}</p>
+                    <p className="text-[#00bcd4] font-bold">OUT: {formatCurrency(d.capitalOut)}</p>
+                  </div>
+                  <div className="flex items-end justify-center gap-0.5 md:gap-1 w-full h-full">
+                    <div className="w-1/3 max-w-[16px] bg-gradient-to-t from-[#00bcd4] to-[#008ba3] rounded-t-sm transition-all duration-500" style={{ height: `${Math.max((d.capitalOut / maxChartValue) * 100, 2)}%` }}></div>
+                    <div className="w-1/3 max-w-[16px] bg-gradient-to-t from-[#00ff00] to-[#009900] rounded-t-sm transition-all duration-500" style={{ height: `${Math.max((d.capitalIn / maxChartValue) * 100, 2)}%` }}></div>
+                  </div>
+                  <span className="text-[9px] md:text-[10px] font-mono text-zinc-500 mt-2">{d.week}</span>
+                </div>
+              ))}
+           </div>
+           <div className="flex justify-center gap-6 mt-4">
+             <div className="flex items-center gap-2"><div className="w-3 h-3 bg-[#00ff00] rounded-sm"></div><span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">◆ CAPITAL IN</span></div>
+             <div className="flex items-center gap-2"><div className="w-3 h-3 bg-[#00bcd4] rounded-sm"></div><span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">◆ CAPITAL OUT</span></div>
+           </div>
+        </div>
+
+        {/* 🚀 IRONCLAD NATIVE CHART: PORTFOLIO HEALTH (DONUT) */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl md:col-span-2">
+          <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-8">
+            Micro-Portfolio Health (Installments)
+          </h2>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-12">
+            
+            {/* CSS DONUT CHART */}
+            <div className="relative w-48 h-48 rounded-full shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]" style={{
+                background: `conic-gradient(
+                  #f43f5e 0% ${latePct}%,
+                  #10b981 ${latePct}% ${latePct + paidPct}%,
+                  #38bdf8 ${latePct + paidPct}% ${latePct + paidPct + partialPct}%,
+                  #eab308 ${latePct + paidPct + partialPct}% 100%
+                )`
+              }}>
+              <div className="absolute inset-4 bg-zinc-900 rounded-full flex flex-col items-center justify-center border border-zinc-800 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+                <span className="text-3xl font-black text-white">{totalInst}</span>
+                <span className="text-[10px] text-zinc-500 font-mono tracking-widest">TOTAL</span>
+              </div>
+            </div>
+
+            {/* LEGEND */}
+            <div className="flex flex-col gap-4">
+               <div className="flex items-center justify-between w-32 border-b border-zinc-800 pb-2">
+                 <div className="flex items-center gap-2"><div className="w-3 h-3 bg-rose-500 rounded-sm"></div><span className="text-xs text-zinc-400">Late</span></div>
+                 <span className="font-mono text-xs font-bold text-rose-400">{lateCount}</span>
+               </div>
+               <div className="flex items-center justify-between w-32 border-b border-zinc-800 pb-2">
+                 <div className="flex items-center gap-2"><div className="w-3 h-3 bg-emerald-500 rounded-sm"></div><span className="text-xs text-zinc-400">Paid</span></div>
+                 <span className="font-mono text-xs font-bold text-emerald-400">{paidCount}</span>
+               </div>
+               <div className="flex items-center justify-between w-32 border-b border-zinc-800 pb-2">
+                 <div className="flex items-center gap-2"><div className="w-3 h-3 bg-sky-400 rounded-sm"></div><span className="text-xs text-zinc-400">Partial</span></div>
+                 <span className="font-mono text-xs font-bold text-sky-400">{partialCount}</span>
+               </div>
+               <div className="flex items-center justify-between w-32">
+                 <div className="flex items-center gap-2"><div className="w-3 h-3 bg-yellow-500 rounded-sm"></div><span className="text-xs text-zinc-400">Pending</span></div>
+                 <span className="font-mono text-xs font-bold text-yellow-400">{pendingCount}</span>
+               </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
       {/* COMMISSION FORECASTER */}
       <div className="bg-gradient-to-br from-amber-900/20 to-yellow-900/10 border border-amber-500/30 rounded-2xl p-6 shadow-xl relative overflow-hidden">
         <div className="absolute -right-10 -top-10 text-9xl opacity-5">💰</div>
@@ -192,60 +267,6 @@ export default function AgentPortalClient({ agent }: { agent: AgentData }) {
              <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mb-1">Projected Week Pipeline</p>
              <p className="text-xl md:text-2xl font-black text-emerald-500">+{formatCurrency(agent.totalRiskLiability * 0.05 * 0.40)}</p>
              <p className="text-[10px] md:text-xs text-zinc-500 mt-2 font-medium">If all clients pay on time</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 🚀 ADMIN-LEVEL CHART: CASH FLOW VELOCITY MATRIX */}
-        <div className="md:col-span-2 bg-black border border-[#00ff00]/30 rounded-2xl p-6 shadow-xl">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-sm font-bold text-[#00ff00] uppercase tracking-wider flex items-center gap-2">
-              <span className="animate-pulse">●</span> Cash Flow Velocity
-            </h2>
-            <span className="text-xs text-zinc-600 font-mono">90-DAY MATRIX</span>
-          </div>
-          <div style={{ width: '100%', height: 320 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }} barGap={4}>
-                  <CartesianGrid strokeDasharray="1 1" stroke="#1a1a1a" vertical={false} horizontal={true}/>
-                  <XAxis dataKey="week" stroke="#525252" fontSize={10} tickLine={false} axisLine={{ stroke: '#262626' }}/>
-                  <YAxis stroke="#525252" fontSize={10} tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`} tickLine={false} axisLine={{ stroke: '#262626' }}/>
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #00ff00', borderRadius: '8px', color: '#00ff00', boxShadow: '0 0 20px rgba(0, 255, 0, 0.1)' }}
-                    labelStyle={{ color: '#00ff00' }} itemStyle={{ color: '#fff' }}
-                    formatter={(value: number, name: string) => [formatCurrency(value), name === 'capitalIn' ? 'Capital In' : 'Capital Out']}
-                  />
-                  <Legend verticalAlign="bottom" height={36} formatter={(value: string) => (<span className="text-zinc-300 text-xs font-mono">{value === 'capitalIn' ? '◆ CAPITAL IN' : '◆ CAPITAL OUT'}</span>)} />
-                  <Bar dataKey="capitalOut" name="capitalOut" fill="#00bcd4" radius={[2, 2, 0, 0]} opacity={0.9} />
-                  <Bar dataKey="capitalIn" name="capitalIn" fill="#00ff00" radius={[2, 2, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* 🚀 ADMIN-LEVEL CHART: PORTFOLIO HEALTH (DONUT) */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl md:col-span-2">
-          <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-4">
-            Micro-Portfolio Health (Installments)
-          </h2>
-          <div style={{ width: '100%', height: 300 }}>
-            {portfolioHealthData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={portfolioHealthData} cx="50%" cy="45%" innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="value" nameKey="name">
-                    {portfolioHealthData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#27272a', border: '1px solid #3f3f46', borderRadius: '8px', color: '#fff' }}
-                    formatter={(value: number, name: string, props: any) => [`${value} installments (${formatCurrency(props.payload.amount)})`, name]}
-                  />
-                  <Legend verticalAlign="bottom" height={36} formatter={(value: string, entry: any) => (<span style={{ color: entry.payload?.color || '#a1a1aa' }} className="text-xs">{value} ({entry.payload?.value || 0})</span>)} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-zinc-500">No active installments.</div>
-            )}
           </div>
         </div>
       </div>
