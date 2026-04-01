@@ -9,8 +9,6 @@ import LiveClock from "@/components/LiveClock";
 import QuickActionsGrid from "@/components/QuickActionsGrid";
 import TimeTravelDebug from "@/components/TimeTravelDebug";
 import { getActivePortfolio } from "@/lib/portfolio";
-
-// 🚀 FUSION: We are importing the Tactical Agent HUD to take over the screen when an Agent logs in!
 import AgentPortalClient from "@/app/agent-portal/AgentPortalClient";
 
 export const dynamic = "force-dynamic";
@@ -51,81 +49,74 @@ export default async function Dashboard() {
 
   const portfolio = await getActivePortfolio();
 
+  const portfolioRecords = await prisma.systemPortfolio.findMany({ select: { id: true, name: true }, orderBy: { createdAt: 'asc' } });
+  const portfolios = portfolioRecords.map(p => ({ id: p.id, name: p.name }));
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(today); todayEnd.setHours(23, 59, 59, 999);
+  const nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 7); nextWeek.setHours(23, 59, 59, 999);
+
+  const fullLoanInclude = {
+    client: { include: { application: true } }, 
+    agent: { select: { id: true, name: true, phone: true, portfolio: true } },
+    installments: { orderBy: { period: 'asc' } as const }
+  };
+
+  // 🔒 SECURITY: Ensure agents only see their own alerts
+  const agentFilter = (!isAdmin && agentId) ? { agentId } : {};
+
+  const overdueInstallments = await prisma.loanInstallment.findMany({ where: { status: "PENDING", dueDate: { lt: today }, loan: { portfolio, ...agentFilter } }, include: { loan: { include: fullLoanInclude } }, orderBy: { dueDate: 'asc' } });
+  const dueTodayInstallments = await prisma.loanInstallment.findMany({ where: { status: "PENDING", dueDate: { gte: today, lte: todayEnd }, loan: { portfolio, ...agentFilter } }, include: { loan: { include: fullLoanInclude } }, orderBy: { dueDate: 'asc' } });
+  const upcomingInstallments = await prisma.loanInstallment.findMany({ where: { status: "PENDING", dueDate: { gt: todayEnd, lte: nextWeek }, loan: { portfolio, ...agentFilter } }, include: { loan: { include: fullLoanInclude } }, orderBy: { dueDate: 'asc' } });
+
+  const getDaysLate = (dueDate: Date): number => { return Math.floor((today.getTime() - new Date(dueDate).getTime()) / (1000 * 60 * 60 * 24)); };
+
+  const mapAlerts = (installments: any[]) => installments.map(i => ({
+    id: i.id, loanId: i.loanId, clientId: i.loan.clientId, period: i.period, dueDate: i.dueDate, expectedAmount: Number(i.expectedAmount),
+    clientName: `${i.loan.client.firstName} ${i.loan.client.lastName}`, firstName: i.loan.client.firstName, phone: i.loan.client.phone || '',
+    agentName: i.loan.agent?.name || null, daysLate: getDaysLate(i.dueDate), penaltyFee: Number(i.penaltyFee) || 0,
+    fbProfileUrl: i.loan.client.application?.fbProfileUrl || null, messengerId: i.loan.client.application?.messengerId || null,
+    loan: serializeLoan(i.loan)
+  }));
+
+  const alerts = { overdue: mapAlerts(overdueInstallments), dueToday: mapAlerts(dueTodayInstallments), upcoming: mapAlerts(upcomingInstallments) };
+
   // ============================================================================
-  // 🚀 THE FUSION INTERCEPTOR: If it's an Agent, deploy the Tactical HUD!
+  // 🚀 AGENT INTERCEPTOR: Fused Tactical HUD + Classic Actions
   // ============================================================================
   if (!isAdmin && agentId) {
     const agentData = await prisma.agent.findUnique({
       where: { id: agentId },
       include: {
-        loans: {
-          where: { status: 'ACTIVE' },
-          include: { client: true, installments: { orderBy: { period: 'asc' } } }
-        },
+        loans: { where: { status: 'ACTIVE' }, include: { client: true, installments: { orderBy: { period: 'asc' } } } },
         commissions: true
       }
     });
 
     if (agentData) {
-      // Calculate Agent Stats for the HUD
-      const today = new Date();
-      let totalRiskLiability = 0;
-      let totalCollected = 0;
-      let pendingCommission = 0;
-      let totalLifetimeEarnings = 0;
-
-      agentData.commissions.forEach(comm => {
-        if (!comm.isPaidOut) pendingCommission += Number(comm.amount);
-        totalLifetimeEarnings += Number(comm.amount);
-      });
-
+      let totalRiskLiability = 0, totalCollected = 0, pendingCommission = 0, totalLifetimeEarnings = 0;
+      agentData.commissions.forEach(comm => { if (!comm.isPaidOut) pendingCommission += Number(comm.amount); totalLifetimeEarnings += Number(comm.amount); });
       const activeClients = agentData.loans.map(loan => {
-        totalRiskLiability += Number(loan.remainingBalance);
-        totalCollected += Number(loan.totalPaid);
-
+        totalRiskLiability += Number(loan.remainingBalance); totalCollected += Number(loan.totalPaid);
         const nextPending = loan.installments.find(i => i.status === "PENDING" || i.status === "PARTIAL");
-        const daysLate = nextPending && new Date(nextPending.dueDate) < today 
-          ? Math.floor((today.getTime() - new Date(nextPending.dueDate).getTime()) / (1000 * 60 * 60 * 24)) 
-          : 0;
-
+        const daysLate = nextPending && new Date(nextPending.dueDate) < today ? Math.floor((today.getTime() - new Date(nextPending.dueDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
         return {
-          loanId: loan.id,
-          clientId: loan.clientId,
-          clientName: `${loan.client.firstName} ${loan.client.lastName}`,
-          firstName: loan.client.firstName,
-          phone: loan.client.phone || '',
-          originalPrincipal: Number(loan.principal),
-          remainingBalance: Number(loan.remainingBalance),
-          nextDueDate: nextPending?.dueDate ? new Date(nextPending.dueDate).toISOString() : null,
-          nextDueAmount: nextPending ? Number(nextPending.expectedAmount) : null,
-          nextDuePeriod: nextPending ? nextPending.period : null,
-          status: daysLate > 0 ? 'OVERDUE' : 'ON_TRACK',
-          daysLate,
-          fbProfileUrl: loan.client.fbProfileUrl || null,
-          messengerId: loan.client.messengerId || null,
-          loan: serializeLoan(loan)
+          loanId: loan.id, clientId: loan.clientId, clientName: `${loan.client.firstName} ${loan.client.lastName}`, firstName: loan.client.firstName,
+          phone: loan.client.phone || '', originalPrincipal: Number(loan.principal), remainingBalance: Number(loan.remainingBalance),
+          nextDueDate: nextPending?.dueDate ? new Date(nextPending.dueDate).toISOString() : null, nextDueAmount: nextPending ? Number(nextPending.expectedAmount) : null,
+          nextDuePeriod: nextPending ? nextPending.period : null, status: daysLate > 0 ? 'OVERDUE' : 'ON_TRACK', daysLate,
+          fbProfileUrl: loan.client.fbProfileUrl || null, messengerId: loan.client.messengerId || null, loan: serializeLoan(loan)
         };
       });
 
       const processedAgentData = {
-        id: agentData.id,
-        name: agentData.name,
-        phone: agentData.phone,
-        username: agentData.username,
-        createdAt: agentData.createdAt,
-        activeClients: activeClients as any,
-        totalRiskLiability,
-        pendingCommission,
-        totalLifetimeEarnings,
-        totalCollected,
-        commissionsCount: agentData.commissions.length,
-        overdueCount: activeClients.filter(c => c.status === 'OVERDUE').length,
-        onTrackCount: activeClients.filter(c => c.status === 'ON_TRACK').length,
-        totalActiveLoans: agentData.loans.length
+        id: agentData.id, name: agentData.name, phone: agentData.phone, username: agentData.username, createdAt: agentData.createdAt,
+        activeClients: activeClients as any, totalRiskLiability, pendingCommission, totalLifetimeEarnings, totalCollected,
+        commissionsCount: agentData.commissions.length, overdueCount: activeClients.filter(c => c.status === 'OVERDUE').length,
+        onTrackCount: activeClients.filter(c => c.status === 'ON_TRACK').length, totalActiveLoans: agentData.loans.length
       };
 
-      // 💥 Intercept complete! Rendering the Agent HUD instead of the classic dashboard.
-      return <AgentPortalClient agent={processedAgentData} />;
+      return <AgentPortalClient agent={processedAgentData} alerts={alerts} portfolios={portfolios} />;
     }
   }
 
@@ -133,32 +124,16 @@ export default async function Dashboard() {
   // NORMAL MASTER ADMIN DASHBOARD (BELOW)
   // ============================================================================
 
-  const portfolioRecords = await prisma.systemPortfolio.findMany({
-    select: { id: true, name: true },
-    orderBy: { createdAt: 'asc' }
-  });
-  
-  const portfolios = portfolioRecords.map(p => ({ id: p.id, name: p.name }));
-
-  const ledgers = await prisma.ledger.findMany({ 
-    where: { portfolio },
-    orderBy: { createdAt: 'desc' },
-    include: { loan: { include: { client: true } }, payment: true }
-  });
+  const ledgers = await prisma.ledger.findMany({ where: { portfolio }, orderBy: { createdAt: 'desc' }, include: { loan: { include: { client: true } }, payment: true } });
   
   const formatLedgerEntry = (ledger: typeof ledgers[0]) => {
     const amount = Number(ledger.amount).toLocaleString('en-US', { minimumFractionDigits: 2 });
     const clientName = ledger.loan?.client ? `${ledger.loan.client.firstName} ${ledger.loan.client.lastName}` : null;
-    
     switch (ledger.transactionType) {
-      case 'LOAN_DISBURSEMENT':
-      case 'DISBURSEMENT': return { icon: '💸', title: 'Loan Disbursed', description: clientName ? `Disbursed ₱${amount} to ${clientName}` : `Disbursed ₱${amount}`, color: 'text-blue-400' };
-      case 'LOAN_REPAYMENT':
-      case 'REPAYMENT': return { icon: '💵', title: 'Payment Received', description: clientName ? `${clientName} paid ₱${amount}` : `Payment of ₱${amount} received`, color: 'text-emerald-400' };
-      case 'CAPITAL_DEPOSIT':
-      case 'DEPOSIT': return { icon: '🏦', title: 'Capital Injected', description: `₱${amount} added to vault`, color: 'text-emerald-400' };
-      case 'CAPITAL_WITHDRAWAL':
-      case 'WITHDRAWAL': return { icon: '📤', title: 'Capital Withdrawn', description: `₱${amount} withdrawn from vault`, color: 'text-amber-400' };
+      case 'LOAN_DISBURSEMENT': case 'DISBURSEMENT': return { icon: '💸', title: 'Loan Disbursed', description: clientName ? `Disbursed ₱${amount} to ${clientName}` : `Disbursed ₱${amount}`, color: 'text-blue-400' };
+      case 'LOAN_REPAYMENT': case 'REPAYMENT': return { icon: '💵', title: 'Payment Received', description: clientName ? `${clientName} paid ₱${amount}` : `Payment of ₱${amount} received`, color: 'text-emerald-400' };
+      case 'CAPITAL_DEPOSIT': case 'DEPOSIT': return { icon: '🏦', title: 'Capital Injected', description: `₱${amount} added to vault`, color: 'text-emerald-400' };
+      case 'CAPITAL_WITHDRAWAL': case 'WITHDRAWAL': return { icon: '📤', title: 'Capital Withdrawn', description: `₱${amount} withdrawn from vault`, color: 'text-amber-400' };
       case 'INTEREST_COLLECTION': return { icon: '📈', title: 'Interest Collected', description: clientName ? `Interest of ₱${amount} from ${clientName}` : `Interest collection: ₱${amount}`, color: 'text-yellow-400' };
       case 'PENALTY': return { icon: '⚠️', title: 'Penalty Applied', description: clientName ? `Penalty of ₱${amount} to ${clientName}` : `Penalty: ₱${amount}`, color: 'text-red-400' };
       default: return { icon: '📋', title: ledger.transactionType, description: `${ledger.debitAccount} → ${ledger.creditAccount}`, color: 'text-zinc-400' };
@@ -174,55 +149,24 @@ export default async function Dashboard() {
     const capitalTransactions = await prisma.capitalTransaction.findMany({ where: { portfolio } });
     let totalCapitalDeposits = 0, totalCapitalWithdrawals = 0;
     capitalTransactions.forEach(tx => { if (tx.type === "DEPOSIT") totalCapitalDeposits += Number(tx.amount); else totalCapitalWithdrawals += Number(tx.amount); });
-
     const expenses = await prisma.expense.findMany({ where: { portfolio } });
     let totalExpenses = 0;
     expenses.forEach(exp => totalExpenses += Number(exp.amount));
-
     let totalDisbursements = 0;
     ledgers.forEach(entry => { if (entry.debitAccount === "Loans Receivable") totalDisbursements += Number(entry.amount); });
-
     const loansInPortfolio = await prisma.loan.findMany({ where: { portfolio }, select: { id: true } });
     const loanIds = loansInPortfolio.map(l => l.id);
-
     const payments = await prisma.payment.findMany({ where: { loanId: { in: loanIds }, status: "Paid" } });
     let totalPrincipalCollected = 0, totalInterestCollected = 0;
     payments.forEach(p => { totalPrincipalCollected += Number(p.principalPortion); totalInterestCollected += Number(p.interestPortion); });
-
     vaultCash = totalCapitalDeposits - totalCapitalWithdrawals - totalDisbursements + totalPrincipalCollected + totalInterestCollected - totalExpenses;
     outstandingLoans = totalDisbursements - totalPrincipalCollected;
     deployableCapital = Number(vaultCash) * 0.85;
-    
     const activeLoans = await prisma.loan.findMany({ where: { portfolio, status: 'ACTIVE' }, select: { principal: true } });
     let totalActivePrincipal = 0;
     activeLoans.forEach(loan => { totalActivePrincipal += Number(loan.principal); });
     projectedRebates = totalActivePrincipal * 0.04;
   }
-
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const todayEnd = new Date(today); todayEnd.setHours(23, 59, 59, 999);
-  const nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 7); nextWeek.setHours(23, 59, 59, 999);
-
-  // FULL LOAN INCLUDE FOR FB LEDGER
-  const fullLoanInclude = {
-    client: { include: { application: true } }, 
-    agent: { select: { id: true, name: true, phone: true, portfolio: true } },
-    installments: { orderBy: { period: 'asc' } as const }
-  };
-
-  const overdueInstallments = await prisma.loanInstallment.findMany({ where: { status: "PENDING", dueDate: { lt: today }, loan: { portfolio } }, include: { loan: { include: fullLoanInclude } }, orderBy: { dueDate: 'asc' } });
-  const dueTodayInstallments = await prisma.loanInstallment.findMany({ where: { status: "PENDING", dueDate: { gte: today, lte: todayEnd }, loan: { portfolio } }, include: { loan: { include: fullLoanInclude } }, orderBy: { dueDate: 'asc' } });
-  const upcomingInstallments = await prisma.loanInstallment.findMany({ where: { status: "PENDING", dueDate: { gt: todayEnd, lte: nextWeek }, loan: { portfolio } }, include: { loan: { include: fullLoanInclude } }, orderBy: { dueDate: 'asc' } });
-
-  const getDaysLate = (dueDate: Date): number => { return Math.floor((today.getTime() - new Date(dueDate).getTime()) / (1000 * 60 * 60 * 24)); };
-
-  const mapAlerts = (installments: any[]) => installments.map(i => ({
-    id: i.id, loanId: i.loanId, clientId: i.loan.clientId, period: i.period, dueDate: i.dueDate, expectedAmount: Number(i.expectedAmount),
-    clientName: `${i.loan.client.firstName} ${i.loan.client.lastName}`, firstName: i.loan.client.firstName, phone: i.loan.client.phone || '',
-    agentName: i.loan.agent?.name || null, daysLate: getDaysLate(i.dueDate), penaltyFee: Number(i.penaltyFee) || 0,
-    fbProfileUrl: i.loan.client.application?.fbProfileUrl || null, messengerId: i.loan.client.application?.messengerId || null,
-    loan: serializeLoan(i.loan)
-  }));
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6 pb-20">
@@ -259,7 +203,7 @@ export default async function Dashboard() {
         </div>
       )}
 
-      <DelinquencyAlerts overdue={mapAlerts(overdueInstallments) as any} dueToday={mapAlerts(dueTodayInstallments) as any} upcoming={mapAlerts(upcomingInstallments) as any} />
+      <DelinquencyAlerts overdue={alerts.overdue as any} dueToday={alerts.dueToday as any} upcoming={alerts.upcoming as any} />
 
       {isAdmin && <CapitalRedeploymentQueue />}
       <QuickActionsGrid isAdmin={isAdmin} portfolios={portfolios} />
@@ -324,4 +268,3 @@ export default async function Dashboard() {
     </div>
   );
 }
-
