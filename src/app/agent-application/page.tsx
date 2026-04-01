@@ -66,11 +66,34 @@ export default function AgentApplicationForm() {
     }
   };
 
+  // 🚀 HEAVY-DUTY COMPRESSION ENGINE INSTALLED HERE
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 800; // Force image to shrink to 800px max width
+          let width = img.width;
+          let height = img.height;
+
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          // Compress to JPEG format at 70% quality (Massive size reduction)
+          resolve(canvas.toDataURL("image/jpeg", 0.7));
+        };
+      };
       reader.onerror = (error) => reject(error);
     });
   };
@@ -84,6 +107,7 @@ export default function AgentApplicationForm() {
       const canvas = canvasRef.current;
       const signatureData = canvas?.toDataURL();
 
+      // Run hardware photos through the compression engine
       let idCardBase64 = "";
       let selfieBase64 = "";
       if (uploads.idCard) idCardBase64 = await fileToBase64(uploads.idCard);
@@ -111,17 +135,21 @@ export default function AgentApplicationForm() {
         body: JSON.stringify(payload),
       });
 
+      if (!res.ok) {
+        throw new Error(`Server returned status: ${res.status}`);
+      }
+
       const data = await res.json();
 
       if (data.success) {
         // TELEPORT TO PDF RECEIPT PAGE
         window.location.href = `/agent-application/receipt?id=${data.applicationId}`;
       } else {
-        alert("Transmission Failed. Please try again.");
+        alert("Transmission Failed: " + data.error);
         setIsSubmitting(false);
       }
-    } catch (err) {
-      alert("Network disruption detected.");
+    } catch (err: any) {
+      alert("Transmission Disrupted: " + (err.message || "Payload too large."));
       setIsSubmitting(false);
     }
   };
