@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
-// 1. THE RECEIVER (Saves new applications)
 export async function POST(req: Request) {
   try {
     const data = await req.json();
@@ -15,11 +14,18 @@ export async function POST(req: Request) {
         incomeSource: data.incomeSource,
         grossIncome: Number(data.grossIncome),
         assetType: data.assetType,
+        customAssetType: data.customAssetType || null,
         assetValue: Number(data.assetValue),
         assetSpecs: data.assetSpecs,
         idCardData: data.idCardData || null,
         selfieData: data.selfieData || null,
         signatureData: data.signatureData || null,
+        collatFront: data.collatFront || null,
+        collatRear: data.collatRear || null,
+        collatLeft: data.collatLeft || null,
+        collatRight: data.collatRight || null,
+        collatSerial: data.collatSerial || null,
+        collatDoc: data.collatDoc || null,
         status: "PENDING",
       },
     });
@@ -30,20 +36,13 @@ export async function POST(req: Request) {
   }
 }
 
-// 2. THE RETRIEVER (Fetches the application to build the PDF)
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
-    
     if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
-
-    const application = await prisma.agentApplication.findUnique({
-      where: { id: Number(id) }
-    });
-
+    const application = await prisma.agentApplication.findUnique({ where: { id: Number(id) } });
     if (!application) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
     return NextResponse.json({ success: true, data: application });
   } catch (error) {
     return NextResponse.json({ success: false, error: "Database fetch failed." }, { status: 500 });
