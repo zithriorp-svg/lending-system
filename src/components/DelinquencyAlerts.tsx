@@ -53,6 +53,7 @@ const MessengerIcon = ({ className }: { className?: string }) => (
 
 function CommunicationButtons({ alert, type }: { alert: any, type: 'OVERDUE' | 'DUE_TODAY' | 'UPCOMING' }) {
   const [copied, setCopied] = useState(false);
+  const [sendingComm, setSendingComm] = useState(false); // 🚀 NEW STATE
   const formattedPhone = formatPhone(alert.phone);
   
   let message = "";
@@ -81,8 +82,41 @@ function CommunicationButtons({ alert, type }: { alert: any, type: 'OVERDUE' | '
     });
   };
 
+  // 🚀 NEW: DIRECT TO COMM-LINK HANDLER
+  const handleCommLinkClick = async () => {
+    if (sendingComm) return;
+    setSendingComm(true);
+    try {
+      const res = await fetch('/api/send-comm-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: alert.clientId, message })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("Alert dropped successfully into Client Comm-Link!");
+      } else {
+        alert("Failed to send: " + data.error);
+      }
+    } catch (e) {
+      alert("Network error.");
+    } finally {
+      setSendingComm(false);
+    }
+  };
+
   return (
     <div className="flex items-center gap-1">
+      {/* 🚀 NEW COMM-LINK BUTTON */}
+      <button
+        onClick={handleCommLinkClick}
+        disabled={sendingComm}
+        className="flex items-center gap-1 px-2.5 py-1.5 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/30 text-purple-400 text-xs font-bold rounded-lg transition-all whitespace-nowrap disabled:opacity-50"
+        title="Send directly to Comm-Link"
+      >
+        💬 {sendingComm ? '...' : 'COMM'}
+      </button>
+
       <button
         onClick={handleFBClick}
         className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${
@@ -116,7 +150,6 @@ function PenaltyButton({ installmentId, loanId, clientName, onPenaltyApplied }: 
 
   const handleApplyPenalty = async () => {
     if (applying || applied) return;
-    // 🚀 FIXED TEXT: Removing the ₱500 phrase completely
     if (!confirm(`REVOKE the 4% Good Payer Discount for ${clientName}?\n\nThis action cannot be undone.`)) return;
 
     setApplying(true);
