@@ -65,7 +65,7 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
       const res = await submitAgentApplication(formData);
       if (res?.error) throw new Error(res.error);
       
-      // 🚀 CRITICAL FIX: DO NOT redirect! Show the success screen so they can print safely.
+      // Stop and show the secure download screen
       setIsSubmitted(true);
       setStatus("");
     } catch (error: any) {
@@ -80,7 +80,7 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
   const currentDate = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   // ============================================================================
-  // SUCCESS & PRINT SCREEN (Prevents browser cancellation)
+  // SUCCESS & PRINT SCREEN (Ensures user can securely save PDF before leaving)
   // ============================================================================
   if (isSubmitted) {
     return (
@@ -129,11 +129,12 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
             <div className="col-span-2">{formData.collateralCondition || '—'}</div>
           </div>
 
+          {/* 🚀 FIXED: Black background to make the white signature ink perfectly visible */}
           {formData.digitalSignature && (
             <div className="mt-4 pt-2 border-t border-black print:break-inside-avoid">
               <h2 className="font-bold text-lg mb-2 uppercase">Digital Signature</h2>
-              <div className="border border-gray-400 p-2 inline-block">
-                <img src={formData.digitalSignature} alt="Digital Signature" style={{ filter: 'invert(1)', maxHeight: '80px' }} />
+              <div className="p-2 inline-block bg-black rounded">
+                <img src={formData.digitalSignature} alt="Digital Signature" style={{ maxHeight: '80px' }} />
               </div>
             </div>
           )}
