@@ -4,7 +4,7 @@ import { useState } from "react";
 import Mermaid from "./Mermaid";
 
 export default function MatrixCopilot() {
-  const [response, setResponse] = useState("Matrix Online. Visual Cortex shielded. Ask me to map out a strategic forecast or lending flowchart.");
+  const [response, setResponse] = useState("Matrix Online. Visual Cortex shielded and synchronized with live database. Ask me to map out a strategic forecast, query live stats, or generate a lending flowchart.");
   const [loading, setLoading] = useState(false);
 
   const handleAsk = async (e: any) => {
@@ -12,12 +12,14 @@ export default function MatrixCopilot() {
     const prompt = e.target.prompt.value;
     if (!prompt) return;
     setLoading(true);
-    setResponse("Generating statistical models and visual node structures...");
+    setResponse("Analyzing Vault telemetry and generating strategic models...");
 
     try {
-      const res = await fetch("/api/matrix", {
+      // 🚀 FIXED: Pointing to the correct API route
+      const res = await fetch("/api/chat", {
         method: "POST",
-        body: JSON.stringify({ prompt })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: prompt })
       });
       const data = await res.json();
       setResponse(data.reply);
@@ -50,7 +52,7 @@ export default function MatrixCopilot() {
   };
 
   return (
-    <details className="bg-[#0f0f13] border border-[#00df82]/40 rounded-2xl shadow-[0_0_20px_rgba(0,223,130,0.1)] group">
+    <details className="bg-[#0f0f13] border border-[#00df82]/40 rounded-2xl shadow-[0_0_20px_rgba(0,223,130,0.1)] group mt-6">
       <summary className="flex items-center justify-between cursor-pointer p-5 list-none">
         <h2 className="text-[#00df82] font-black uppercase tracking-widest text-sm flex items-center gap-2">
           <span>🧠</span> 
@@ -68,14 +70,14 @@ export default function MatrixCopilot() {
       </summary>
       
       <div className="px-5 pb-5">
-        <div className="bg-[#1c1c21] p-4 rounded-xl text-sm text-gray-300 leading-relaxed mb-4 min-h-[100px] border border-[#2a2a35]">
+        <div className="bg-[#1c1c21] p-4 rounded-xl text-sm text-gray-300 leading-relaxed mb-4 min-h-[100px] border border-[#2a2a35] overflow-x-auto">
           {renderContent(response)}
         </div>
 
         <form onSubmit={handleAsk} className="flex gap-3">
           <input
             name="prompt"
-            placeholder="e.g. Draw a flowchart for a multi-branch lending strategy."
+            placeholder="e.g. How many overdue installments do we have? What is the penalty rule?"
             className="flex-1 bg-[#09090b] border border-[#2a2a35] rounded-xl outline-none text-white text-sm p-4 focus:border-[#00df82] transition-colors"
             disabled={loading}
             required
@@ -83,9 +85,9 @@ export default function MatrixCopilot() {
           <button
             type="submit"
             disabled={loading}
-            className="bg-[#00df82] text-[#09090b] px-6 py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-[#00df82]/80 transition-colors disabled:opacity-50"
+            className="bg-[#00df82] text-[#09090b] px-6 py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-[#00df82]/80 transition-colors disabled:opacity-50 flex items-center gap-2"
           >
-            Project
+            {loading ? "..." : "Project"}
           </button>
         </form>
       </div>
