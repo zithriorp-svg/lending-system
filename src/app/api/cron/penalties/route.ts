@@ -1,123 +1,108 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 
-// CRON_SECRET environment variable for security
-// This ensures only Vercel cron or authorized calls can trigger this
-const CRON_SECRET = process.env.CRON_SECRET;
-
-// Penalty configuration - 5% of expected amount per week late, capped at 50%
-const PENALTY_RATE = 0.05; // 5% penalty
-const MAX_PENALTY_RATE = 0.50; // Max 50% of principal
-const PENALTY_FLAT_FEE = 50; // Fixed penalty fee option
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    // Security check - verify cron secret
-    const authHeader = request.headers.get("authorization");
-    const urlSecret = new URL(request.url).searchParams.get("secret");
-    
-    // Allow either header auth or URL param for Vercel cron
-    const providedSecret = authHeader?.replace("Bearer ", "") || urlSecret;
-    
-    if (CRON_SECRET && providedSecret !== CRON_SECRET) {
-      return NextResponse.json(
-        { error: "Unauthorized - Invalid cron secret" },
-        { status: 401 }
-      );
-    }
-
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    
-    // Find all overdue installments that are still PENDING
-    const overdueInstallments = await prisma.loanInstallment.findMany({
+
+    // 1. Find all ACTIVE loans that still have the 4% discount, 
+    // BUT missed a payment yesterday (dueDate is less than today and still PENDING/PARTIAL)
+    const delinquentLoans = await prisma.loan.findMany({
       where: {
-        status: "PENDING",
-        dueDate: { lt: now }
+        status: "ACTIVE",
+        goodPayerDiscountRevoked: false,
+        installments: {
+          some: {
+            status: { in: ["PENDING", "PARTIAL"] },
+            dueDate: { lt: now }
+          }
+        }
       },
       include: {
-        loan: { include: { client: true } }
+        installments: true 
       }
     });
 
-    const results = {
-      processed: 0,
-      penaltiesApplied: 0,
-      totalPenalties: 0,
-      errors: [] as string[]
-    };
+    let revokedCount = 0;
 
-    for (const installment of overdueInstallments) {
-      try {
-        // Calculate days late
-        const dueDate = new Date(installment.dueDate);
-        const daysLate = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+    for (const loan of delinquentLoans) {
+      // 2. Officially revoke the discount in the database
+      await prisma.loan.update({
+        where: { id: loan.id },
+        data: { goodPayerDiscountRevoked: true }
+      });
+
+      // 3. Calculate the math difference (10% standard vs 6% discounted)
+      const principal = Number(loan.principal);
+      const newInterestTotal = principal * 0.10; // Bump to 10%
+      const newInterestPerPeriod = newInterestTotal / loan.termDuration;
+      const principalPerPeriod = principal / loan.termDuration;
+      const newExpectedAmount = principalPerPeriod + newInterestPerPeriod;
+
+      // 4. Apply the exact difference to all unpaid installments
+      const pendingInstallments = loan.installments.filter(i => 
+        i.status === "PENDING" || i.status === "LATE" || i.status === "PARTIAL" || i.status === "MISSED"
+      );
+
+      for (const inst of pendingInstallments) {
+        const difference = newExpectedAmount - Number(inst.expectedAmount);
         
-        // Only apply penalty once per 7 days late (weekly penalty)
-        const expectedAmount = Number(installment.expectedAmount);
-        const currentPenalty = Number(installment.penaltyFee);
-        
-        // Calculate what the penalty should be based on days late
-        // Penalty increases by PENALTY_FLAT_FEE every 7 days late
-        const weeksLate = Math.floor(daysLate / 7);
-        const expectedPenalty = weeksLate * PENALTY_FLAT_FEE;
-        
-        // Also calculate percentage-based penalty (5% per week, max 50%)
-        const percentageBasedPenalty = Math.min(
-          expectedAmount * PENALTY_RATE * weeksLate,
-          expectedAmount * MAX_PENALTY_RATE
-        );
-        
-        // Use the higher of flat fee or percentage-based penalty
-        const newPenalty = Math.max(expectedPenalty, percentageBasedPenalty);
-        
-        // Only update if penalty has increased
-        if (newPenalty > currentPenalty) {
-          const penaltyIncrement = newPenalty - currentPenalty;
-          
-          await prisma.loanInstallment.update({
-            where: { id: installment.id },
-            data: {
-              penaltyFee: newPenalty,
-              status: "LATE" // Update status to LATE
-            }
-          });
-          
-          results.penaltiesApplied++;
-          results.totalPenalties += penaltyIncrement;
-        }
-        
-        results.processed++;
-      } catch (error) {
-        const errorMsg = `Error processing installment ${installment.id}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-        results.errors.push(errorMsg);
-        console.error(errorMsg);
+        // Mark the specific missed installment as LATE
+        const instDueDate = new Date(inst.dueDate);
+        instDueDate.setHours(0, 0, 0, 0);
+        const newStatus = (instDueDate < now && inst.status === "PENDING") ? "LATE" : inst.status;
+
+        await prisma.loanInstallment.update({
+          where: { id: inst.id },
+          data: { 
+            penaltyFee: { increment: difference },
+            status: newStatus
+          }
+        });
       }
+
+      // 5. Create an immutable Audit Log for the House
+      await prisma.auditLog.create({
+        data: {
+          type: 'PENALTY',
+          amount: newInterestTotal - (principal * 0.06), // The exact penalty value gained
+          referenceId: loan.id,
+          referenceType: 'LOAN',
+          description: 'AUTO-CRON: 4% Good Payer Discount REVOKED due to delinquency.',
+          portfolio: loan.portfolio
+        }
+      });
+
+      // 6. 🚀 INJECT: SYSTEM BOT SENDS MESSAGE TO COMM-LINK
+      await prisma.message.create({
+        data: {
+          clientId: loan.clientId,
+          sender: "VAULT SYSTEM (AUTO)",
+          text: `⚠️ CONTRACT ENFORCEMENT: Your 4% Good Payer Discount has been permanently REVOKED due to delinquent payment on TXN-${loan.id.toString().padStart(4, '0')}. Your interest rate is now locked at the standard 10%.`
+        }
+      });
+
+      revokedCount++;
     }
 
-    // Log the cron execution
-    console.log(`[CRON] Penalty Engine executed at ${new Date().toISOString()}`);
-    console.log(`[CRON] Processed: ${results.processed}, Penalties Applied: ${results.penaltiesApplied}, Total: ${results.totalPenalties}`);
+    console.log(`[CRON] Penalty Engine executed. Revoked discount for ${revokedCount} delinquent loans.`);
 
     return NextResponse.json({
       success: true,
-      timestamp: new Date().toISOString(),
-      ...results
+      message: `Penalty scan complete. Revoked discount for ${revokedCount} delinquent loans.`
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("[CRON] Penalty Engine Error:", error);
-    return NextResponse.json(
-      { 
-        error: "Internal server error", 
-        message: error instanceof Error ? error.message : "Unknown error" 
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// Also support POST for manual triggers
+// Allow POST requests for manual test triggers
 export async function POST(request: Request) {
   return GET(request);
 }
+
