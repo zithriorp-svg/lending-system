@@ -68,6 +68,7 @@ export default async function AgentReceiptPage(props: { searchParams: Promise<{ 
 
         <h2 className="font-bold text-lg border-b-2 border-gray-300 pb-1 mb-3 uppercase text-purple-900">3. Pledged Collateral Declaration</h2>
         <div className="grid grid-cols-2 gap-y-2 text-sm mb-6 pl-2 bg-purple-50 p-4 rounded-lg border border-purple-200">
+          {/* 🚀 FIXED: Directly fetching the newly added schema fields */}
           <div className="font-semibold text-purple-800">Asset Type:</div><div className="font-bold">{app.collateralType || '—'}</div>
           <div className="font-semibold text-purple-800">Market Value:</div><div className="font-bold text-rose-600">₱{(app.collateralValue || 0).toLocaleString()}</div>
           <div className="font-semibold col-span-2 mt-2 text-purple-800">Specifications & Condition:</div>
