@@ -448,15 +448,15 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
             <div className={`${borderStyle} p-4 space-y-4`}>
               <div className="grid grid-cols-1 gap-3 text-sm">
                 {[
-                  {field: 'selfieUrl', label: 'Live Selfie (capture)'},
-                  {field: 'idPhotoUrl', label: 'Valid ID (Required)'},
-                  {field: 'payslipPhotoUrl', label: 'Payment Slip / Payslip (Required)'},
-                  {field: 'electricBillPhotoUrl', label: 'Electricity Bill (Proof of Address)'},
-                  {field: 'waterBillPhotoUrl', label: 'Water Bill'}
+                  {field: 'selfieUrl', label: 'Live Selfie (capture)', required: true},
+                  {field: 'idPhotoUrl', label: 'Valid ID (Required)', required: true},
+                  {field: 'payslipPhotoUrl', label: 'Payment Slip / Payslip (Required)', required: true},
+                  {field: 'electricBillPhotoUrl', label: 'Electricity Bill (Proof of Address)', required: false},
+                  {field: 'waterBillPhotoUrl', label: 'Water Bill', required: false}
                 ].map(item => (
                   <div key={item.field} className="bg-[#1c1c21] border border-[#2a2a35] rounded-lg p-3">
                     <label className="block text-gray-400 text-xs mb-1 uppercase tracking-widest">{item.label}</label>
-                    <input name={item.field} type="file" accept="image/*" capture={item.field === 'selfieUrl' ? 'user' : undefined} required={['selfieUrl','idPhotoUrl','payslipPhotoUrl'].includes(item.field)} className="w-full text-xs text-gray-500" onChange={e => handleImage(e, item.field)} />
+                    <input name={item.field} type="file" accept="image/*" capture={item.field === 'selfieUrl' ? 'user' : undefined} required={item.required} className="w-full text-xs text-gray-500" onChange={e => handleImage(e, item.field)} />
                   </div>
                 ))}
               </div>
@@ -465,6 +465,7 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
 
           <div>
             <h2 className="text-purple-400 font-bold text-lg mb-1 uppercase tracking-wider">4. Pledged Collateral Declaration</h2>
+            <p className="text-xs text-zinc-400 mb-3 leading-relaxed">Provide details of the asset you are pledging as a guarantee against your loan.</p>
             <div className={`${borderStyle} p-4 space-y-4`}>
               <div>
                 <label className="text-xs text-zinc-400 font-bold uppercase tracking-widest block mb-1">Asset Type</label>
@@ -512,5 +513,23 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
             <h2 className="text-red-400 font-bold text-lg mb-3 uppercase tracking-wider">5. Legal Compliance & Consent</h2>
             <div className={`${borderStyle} p-4 space-y-4`}>
               <div>
-                <label className="block text-zinc-400 text-xs mb-2 uppercase tracking-widest">Digital Signature (Sign Below)</
+                <label className="block text-zinc-400 text-xs mb-2 uppercase tracking-widest">Digital Signature (Sign Below)</label>
+                <SignaturePad onSignature={(dataUrl) => setFormData(prev => ({...prev, digitalSignature: dataUrl}))} />
+              </div>
+              <div className="flex items-start gap-3 text-xs text-zinc-500">
+                <input type="checkbox" required className="w-5 h-5 accent-emerald-500 mt-0.5" />
+                <span className="break-words leading-relaxed text-zinc-300">
+                  <strong className="text-white">I agree to the Data Privacy & Consent Waiver.</strong> I certify that all information is true, and I agree to the terms, interest rates, and penalties of this loan agreement.
+                </span>
+              </div>
+            </div>
+          </div>
 
+          <button type="submit" disabled={status !== ""} className="w-full bg-[#00df82] border border-[#00df82]/40 text-[#09090b] py-5 font-black text-xs tracking-widest uppercase hover:bg-[#00df82]/80 disabled:opacity-50 rounded-xl transition-colors shadow-[0_0_20px_rgba(0,223,130,0.15)]">
+            {status || "SUBMIT APPLICATION"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
