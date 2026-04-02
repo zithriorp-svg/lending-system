@@ -280,40 +280,48 @@ model AuditLog {
 // AGENT & CO-MAKER BINDING APPLICATIONS
 // ==========================================
 model AgentApplication {
-  id              Int      @id @default(autoincrement())
+  id                      Int       @id @default(autoincrement())
+  
+  // System Tracking
+  portfolio               String    @default("Main Portfolio")
+  status                  String    @default("PENDING") // PENDING, APPROVED, REJECTED
   
   // 1. Personal Matrix
-  firstName       String
-  lastName        String
-  phone           String
-  fbProfileUrl    String
-  address         String
+  firstName               String
+  lastName                String
+  phone                   String
+  address                 String?
+  birthDate               DateTime?
 
-  // 2. Financial Capacity
-  incomeSource    String
-  grossIncome     Float
+  // 2. Territory & Operational Capacity
+  territory               String?
+  networkSize             Int?
+  employment              String?
 
-  // 3. Collateral Declaration
-  assetType       String
-  customAssetType String?  // Automatically used if "Other" is selected
-  assetValue      Float
-  assetSpecs      String
+  // 3. Forensic Identity Data (Base64)
+  selfieUrl               String?
+  idPhotoUrl              String?
+  clearanceUrl            String?
 
-  // 4. Forensic Identity Data (Base64)
-  idCardData      String?
-  selfieData      String?
-  signatureData   String?
-
+  // 4. Pledged Collateral Declaration
+  collateralType          String?
+  collateralValue         Float?
+  collateralCondition     String?
+  
   // 5. 6-Point Collateral Inspection (Base64)
-  collatFront     String?
-  collatRear      String?
-  collatLeft      String?
-  collatRight     String?
-  collatSerial    String?
-  collatDoc       String?
+  collateralPhotoFront    String?
+  collateralPhotoRear     String?
+  collateralPhotoLeft     String?
+  collateralPhotoRight    String?
+  collateralPhotoSerial   String?
+  collateralPhotoDocument String?
 
-  // System Tracking
-  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  // Legal
+  digitalSignature        String?
+  
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@index([portfolio])
+  @@index([status])
 }
