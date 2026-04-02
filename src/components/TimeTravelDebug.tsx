@@ -1,103 +1,52 @@
 "use client";
 
 import { useState } from "react";
+import { fastForwardTime, reverseTime } from "./timeTravelActions";
 
 export default function TimeTravelDebug() {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{
-    success: boolean;
-    message?: string;
-    error?: string;
-    installmentsUpdated?: number;
-  } | null>(null);
 
   const handleFastForward = async () => {
-    if (loading) return;
-
-    // Confirm action
-    if (!confirm(
-      "⏳ DEBUG: Fast-Forward Time\n\n" +
-      "This will set ALL pending installment due dates to 7 days in the past.\n\n" +
-      "This is for TESTING purposes only. Continue?"
-    )) {
-      return;
-    }
-
     setLoading(true);
-    setResult(null);
+    await fastForwardTime();
+    setLoading(false);
+  };
 
-    try {
-      const res = await fetch('/api/debug/fast-forward', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      const data = await res.json();
-      setResult(data);
-
-      if (data.success) {
-        // Refresh the page to show updated data
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      }
-    } catch (e) {
-      setResult({ success: false, error: "Network error" });
-    } finally {
-      setLoading(false);
-    }
+  const handleReverse = async () => {
+    setLoading(true);
+    await reverseTime();
+    setLoading(false);
   };
 
   return (
-    <div className="mt-8 border-t border-zinc-800 pt-6">
-      <button
-        onClick={handleFastForward}
-        disabled={loading}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 
-                   bg-zinc-900/50 hover:bg-zinc-800/50 
-                   border border-zinc-700/50 hover:border-zinc-600/50 
-                   rounded-lg text-zinc-500 hover:text-zinc-400 
-                   text-xs font-mono tracking-wide uppercase
-                   transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {loading ? (
-          <>
-            <span className="animate-spin w-4 h-4 border border-zinc-500 border-t-transparent rounded-full"></span>
-            <span>Fast-forwarding...</span>
-          </>
-        ) : (
-          <>
-            <span>⏳</span>
-            <span>DEBUG: Fast-Forward Time</span>
-          </>
-        )}
-      </button>
+    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl mt-6">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-sm font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+          ⏳ DEBUG: TIME CONTROL
+        </h2>
+        <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-2 py-1 rounded">TEMPORARY DEBUG TOOL</span>
+      </div>
+      
+      <div className="flex flex-col md:flex-row gap-4">
+        <button 
+          onClick={handleFastForward}
+          disabled={loading}
+          className="flex-1 bg-rose-900/30 hover:bg-rose-900/50 border border-rose-500/30 text-rose-400 font-bold py-3 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading ? "..." : "⏩ FAST-FORWARD (7 Days)"}
+        </button>
 
-      {/* Result Display */}
-      {result && (
-        <div className={`mt-3 p-3 rounded-lg text-xs font-mono ${
-          result.success 
-            ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400' 
-            : 'bg-red-500/10 border border-red-500/30 text-red-400'
-        }`}>
-          {result.success ? (
-            <div>
-              <p className="font-bold">✓ {result.message}</p>
-              {result.installmentsUpdated && (
-                <p className="mt-1 text-amber-400/70">
-                  {result.installmentsUpdated} installment(s) now overdue
-                </p>
-              )}
-              <p className="mt-1 text-amber-400/50">Refreshing dashboard...</p>
-            </div>
-          ) : (
-            <p className="font-bold">✗ {result.error}</p>
-          )}
-        </div>
-      )}
-
-      <p className="mt-2 text-center text-[10px] text-zinc-600 font-mono">
-        TEMPORARY DEBUG TOOL — Set pending installments 7 days overdue
+        <button 
+          onClick={handleReverse}
+          disabled={loading}
+          className="flex-1 bg-emerald-900/30 hover:bg-emerald-900/50 border border-emerald-500/30 text-emerald-400 font-bold py-3 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading ? "..." : "⏪ REVERSE (Back to Normal)"}
+        </button>
+      </div>
+      
+      <p className="text-xs text-zinc-500 mt-4 text-center">
+        Warning: Fast-Forward pushes all pending due dates 7 days into the past to trigger overdue warnings. Reverse restores them.
       </p>
     </div>
   );
