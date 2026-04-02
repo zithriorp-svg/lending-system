@@ -15,9 +15,7 @@ export async function submitAgentApplication(data: any) {
 
     await (prisma.agentApplication as any).create({
       data: {
-        // 🚀 THE CRITICAL FIX: Ensure the portfolio is saved to the DB
         portfolio: data.portfolio || "Main Portfolio",
-        
         firstName: data.firstName || "",
         lastName: data.lastName || "",
         phone: data.phone || "",
@@ -26,9 +24,23 @@ export async function submitAgentApplication(data: any) {
         territory: data.territory || null,
         networkSize: networkSizeNum,
         employment: data.employment || null,
+        
         selfieUrl: data.selfieUrl || null,
         idPhotoUrl: data.idPhotoUrl || null,
         clearanceUrl: data.clearanceUrl || null,
+        
+        // 🚀 THE MISSING LINKS: Explicitly catching the text fields so they don't drop!
+        collateralType: data.collateralType || null,
+        collateralValue: data.collateralValue ? Number(data.collateralValue) : null,
+        collateralCondition: data.collateralCondition || null,
+        
+        collateralPhotoFront: data.collateralPhotoFront || null,
+        collateralPhotoRear: data.collateralPhotoRear || null,
+        collateralPhotoLeft: data.collateralPhotoLeft || null,
+        collateralPhotoRight: data.collateralPhotoRight || null,
+        collateralPhotoSerial: data.collateralPhotoSerial || null,
+        collateralPhotoDocument: data.collateralPhotoDocument || null,
+
         digitalSignature: data.digitalSignature || null,
         status: "PENDING"
       }
