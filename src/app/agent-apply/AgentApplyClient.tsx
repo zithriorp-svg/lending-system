@@ -9,12 +9,9 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
     firstName: "", lastName: "", phone: "", address: "",
     birthDate: "", territory: "", networkSize: "1-10", employment: "",
     selfieUrl: "", idPhotoUrl: "", clearanceUrl: "", 
-    
-    // 🚀 NEW COLLATERAL FIELDS
     collateralType: "", collateralValue: "", collateralCondition: "",
     collateralPhotoFront: "", collateralPhotoRear: "", collateralPhotoLeft: "",
     collateralPhotoRight: "", collateralPhotoSerial: "", collateralPhotoDocument: "",
-
     digitalSignature: "",
     portfolio: defaultPortfolio
   });
@@ -62,6 +59,8 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+    
+    // Trigger Print for the Receipt
     window.print();
     
     setStatus("SUBMITTING AGENT DOSSIER...");
@@ -98,6 +97,7 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-7">
+          {/* SECTION 1 */}
           <div className="print:hidden">
             <h2 className={headerStyle}>1. Agent Dossier (Personal Info)</h2>
             <div className={`grid grid-cols-2 gap-0 ${borderStyle}`}>
@@ -109,6 +109,7 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
             </div>
           </div>
 
+          {/* SECTION 2 */}
           <div className="print:hidden">
             <h2 className={headerStyle}>2. Territory & Operational Capacity</h2>
             <div className={`${borderStyle} p-4 space-y-4`}>
@@ -130,6 +131,7 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
             </div>
           </div>
 
+          {/* SECTION 3 */}
           <div className="print:hidden">
             <h2 className="text-[#00df82] font-bold text-lg mb-3 uppercase tracking-wider">3. Forensic Verification Dossier</h2>
             <div className={`${borderStyle} p-4 space-y-4`}>
@@ -148,12 +150,11 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
             </div>
           </div>
 
-          {/* 🚀 SEC 4: THE COLLATERAL DECLARATION */}
+          {/* SECTION 4: COLLATERAL */}
           <div className="print:hidden">
             <h2 className="text-purple-400 font-bold text-lg mb-1 uppercase tracking-wider">4. Collateral Declaration</h2>
-            <p className="text-xs text-zinc-400 mb-3 leading-relaxed">Provide details of the asset you are pledging as a guarantee against client default. This asset will be seized if obligations are unmet.</p>
+            <p className="text-xs text-zinc-400 mb-3 leading-relaxed">Provide details of the asset you are pledging as a guarantee against client default.</p>
             <div className={`${borderStyle} p-4 space-y-4`}>
-              
               <div>
                 <label className="text-xs text-zinc-400 font-bold uppercase tracking-widest block mb-1">Asset Type</label>
                 <select required name="collateralType" className="w-full bg-black border border-zinc-800 rounded p-3 text-white text-sm" value={formData.collateralType} onChange={e => setFormData({...formData, collateralType: e.target.value})}>
@@ -165,17 +166,14 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
                   <option value="Other">Other Valuable Asset</option>
                 </select>
               </div>
-
               <div>
                 <label className="text-xs text-zinc-400 font-bold uppercase tracking-widest block mb-1">Estimated Market Value (₱)</label>
                 <input required type="number" name="collateralValue" placeholder="e.g. 150000" className="w-full bg-black border border-zinc-800 rounded p-3 text-white text-sm" onChange={e => setFormData({...formData, collateralValue: e.target.value})} />
               </div>
-
               <div>
                 <label className="text-xs text-zinc-400 font-bold uppercase tracking-widest block mb-1">Asset Specifications & Condition</label>
-                <textarea required rows={3} name="collateralCondition" placeholder="Include Make, Model, Year, Serial Number, OR/CR Number, and current physical condition..." className="w-full bg-black border border-zinc-800 rounded p-3 text-white text-sm" onChange={e => setFormData({...formData, collateralCondition: e.target.value})}></textarea>
+                <textarea required rows={3} name="collateralCondition" placeholder="Include Make, Model, Year, Serial Number, OR/CR Number..." className="w-full bg-black border border-zinc-800 rounded p-3 text-white text-sm" onChange={e => setFormData({...formData, collateralCondition: e.target.value})}></textarea>
               </div>
-
               <div className="pt-2 border-t border-zinc-800">
                 <label className="text-xs text-zinc-400 font-bold uppercase tracking-widest block mb-3">Asset Photographic Evidence</label>
                 <div className="grid grid-cols-2 gap-3 text-sm">
@@ -196,31 +194,31 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
                   ))}
                 </div>
               </div>
-
             </div>
           </div>
 
+          {/* SECTION 5 */}
           <div className="print:hidden">
             <h2 className="text-red-400 font-bold text-lg mb-3 uppercase tracking-wider">5. Binding Agreement & Signature</h2>
             <div className={`${borderStyle} p-4 space-y-4`}>
-              <div className="border border-zinc-700 p-4 text-sm text-zinc-300 print:break-inside-avoid print:mb-4 print:bg-white print:border-black print:text-black">
-                <h3 className="font-bold text-white mb-2 uppercase print:text-black">Agent Commission & Remittance Agreement</h3>
+              <div className="border border-zinc-700 p-4 text-sm text-zinc-300">
+                <h3 className="font-bold text-white mb-2 uppercase">Agent Commission & Remittance Agreement</h3>
                 <ol className="list-decimal pl-5 space-y-2">
-                  <li className="break-words print:text-black"><strong>Hatian ng Komisyon (40/60 Rule):</strong> Ang Ahente ay tatanggap ng 40% na komisyon mula lamang sa TUBONG (Interest) nakolekta. Ang puhunan (Principal) at ang natitirang 60% ng tubo ay pag-aari ng Vault.</li>
-                  <li className="break-words print:text-black"><strong>Agarang Remittance:</strong> Obligasyon ng Ahente na i-remit ang nakolektang Principal at 60% Vault Interest sa parehong araw ng pangingilekta. Bawal itago, gamitin, o ipahiram ang pera ng Vault.</li>
-                  <li className="break-words print:text-black"><strong>Responsibilidad sa Kliyente:</strong> Ang Ahente ang pangunahing tagapaningil ng kanyang mga nirekomendang kliyente. Kung sakaling mag-default ang kliyente, responsibilidad ng Ahente na tumulong sa collection protocol ng Vault.</li>
-                  <li className="break-words print:text-black"><strong>Legal na Aksyon (Estafa):</strong> Ang anumang hindi awtorisadong paggamit o pagtatago ng nakolektang pera ng Vault ay ituturing na pagnanakaw at maaaring magresulta sa kasong Estafa.</li>
+                  <li><strong>Hatian ng Komisyon (40/60 Rule):</strong> Ang Ahente ay tatanggap ng 40% na komisyon mula lamang sa TUBONG (Interest) nakolekta.</li>
+                  <li><strong>Agarang Remittance:</strong> Obligasyon ng Ahente na i-remit ang nakolektang Principal at 60% Vault Interest sa parehong araw ng pangingilekta.</li>
+                  <li><strong>Responsibilidad sa Kliyente:</strong> Ang Ahente ang pangunahing tagapaningil ng kanyang mga nirekomendang kliyente.</li>
+                  <li><strong>Legal na Aksyon (Estafa):</strong> Ang anumang hindi awtorisadong paggamit o pagtatago ng nakolektang pera ng Vault ay ituturing na pagnanakaw.</li>
                 </ol>
               </div>
 
-              <div className="print:break-inside-avoid print:mb-4">
-                <label className="block text-zinc-400 text-xs mb-2 uppercase tracking-widest print:text-black">Digital Signature (Sign Below)</label>
+              <div>
+                <label className="block text-zinc-400 text-xs mb-2 uppercase tracking-widest">Digital Signature (Sign Below)</label>
                 <SignaturePad onSignature={(dataUrl) => setFormData(prev => ({...prev, digitalSignature: dataUrl}))} />
               </div>
-              <div className="flex items-start gap-3 text-xs text-zinc-500 print:text-black">
-                <input type="checkbox" required className="w-5 h-5 accent-emerald-500 mt-0.5 print:hidden" />
+              <div className="flex items-start gap-3 text-xs text-zinc-500">
+                <input type="checkbox" required className="w-5 h-5 accent-emerald-500 mt-0.5" />
                 <span className="break-words leading-relaxed text-zinc-300">
-                  <strong className="text-white">I acknowledge that I am applying as a Co-Maker.</strong> If any client assigned to me defaults on their loan, I agree that the unpaid balance will be legally charged to me, and my pledged collateral listed above may be seized by FinTech Vault.
+                  <strong className="text-white">I acknowledge that I am applying as a Co-Maker.</strong> If any client assigned to me defaults on their loan, I agree that the unpaid balance will be legally charged to me, and my pledged collateral listed above may be seized.
                 </span>
               </div>
             </div>
@@ -231,43 +229,71 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
           </button>
         </form>
 
-        <div className="hidden print:block mt-8 text-black">
-          <h2 className="font-bold text-lg border-b border-black pb-2 mb-4">AGENT APPLICANT INFORMATION</h2>
-          <div className="grid grid-cols-2 gap-y-2 text-sm mb-6">
+        {/* ========================================================= */}
+        {/* ===== PRINT-ONLY: AGENT DOSSIER & PHOTOS (UPGRADED) ===== */}
+        {/* ========================================================= */}
+        <div className="hidden print:block mt-4 text-black">
+          
+          <h2 className="font-bold text-lg border-b border-black pb-1 mb-3 uppercase">Agent Applicant Information</h2>
+          <div className="grid grid-cols-2 gap-y-1 text-sm mb-4">
             <div className="font-semibold">Full Name:</div><div>{formData.firstName} {formData.lastName}</div>
             <div className="font-semibold">Phone:</div><div>{formData.phone || '—'}</div>
             <div className="font-semibold">Address:</div><div>{formData.address || '—'}</div>
             <div className="font-semibold">Birth Date:</div><div>{formData.birthDate || '—'}</div>
           </div>
           
-          <h2 className="font-bold text-lg border-b border-black pb-2 mb-4">TERRITORY & CAPACITY</h2>
-          <div className="grid grid-cols-2 gap-y-2 text-sm mb-6">
+          <h2 className="font-bold text-lg border-b border-black pb-1 mb-3 uppercase">Territory & Capacity</h2>
+          <div className="grid grid-cols-2 gap-y-1 text-sm mb-4">
             <div className="font-semibold">Primary Territory:</div><div>{formData.territory || '—'}</div>
             <div className="font-semibold">Network Size:</div><div>{formData.networkSize || '—'}</div>
             <div className="font-semibold">Employment/Business:</div><div>{formData.employment || '—'}</div>
           </div>
 
-          <h2 className="font-bold text-lg border-b border-black pb-2 mb-4">PLEDGED COLLATERAL DECLARATION</h2>
-          <div className="grid grid-cols-2 gap-y-2 text-sm mb-6">
+          <h2 className="font-bold text-lg border-b border-black pb-1 mb-3 uppercase">Pledged Collateral Declaration</h2>
+          <div className="grid grid-cols-2 gap-y-1 text-sm mb-4">
             <div className="font-semibold">Asset Type:</div><div>{formData.collateralType || '—'}</div>
             <div className="font-semibold">Market Value:</div><div>₱{formData.collateralValue || '—'}</div>
-            <div className="font-semibold col-span-2 mt-2">Specifications & Condition:</div>
+            <div className="font-semibold col-span-2 mt-1">Specifications & Condition:</div>
             <div className="col-span-2">{formData.collateralCondition || '—'}</div>
           </div>
 
+          {/* 🚀 FIXED SIGNATURE (FORCED BLACK INK) */}
           {formData.digitalSignature && (
-            <div className="mt-6 pt-4 border-t-2 border-black print:break-inside-avoid print:mb-4">
-              <h2 className="font-bold text-lg mb-3">DIGITAL SIGNATURE</h2>
-              <div className="bg-white border border-gray-400 p-2 inline-block">
-                <img src={formData.digitalSignature} alt="Digital Signature" className="max-h-24 print:invert" />
+            <div className="mt-4 pt-2 border-t border-black print:break-inside-avoid">
+              <h2 className="font-bold text-lg mb-2 uppercase">Digital Signature</h2>
+              <div className="border border-gray-400 p-2 inline-block">
+                {/* filter: invert(1) forces the white signature to turn black for the white PDF paper! */}
+                <img src={formData.digitalSignature} alt="Digital Signature" style={{ filter: 'invert(1)', maxHeight: '80px' }} />
               </div>
             </div>
           )}
-          <div className="mt-8 pt-4 border-t-2 border-black text-xs text-gray-600 text-center print:break-inside-avoid">
-            <p className="font-semibold mb-1">IMPORTANT: This is your official agent application receipt.</p>
-            <p>Keep this document for your records. Your application is now being processed.</p>
-            <p className="mt-2 text-gray-400">Generated: {currentDate}</p>
+
+          {/* 🚀 NEW PAGE 2: PHOTO GRID */}
+          <div style={{ pageBreakBefore: 'always' }} className="pt-8">
+            <h2 className="text-2xl font-bold text-black mb-1 text-center">APPENDIX A: FORENSIC & COLLATERAL EVIDENCE</h2>
+            <p className="text-sm text-gray-600 text-center mb-6 border-b-2 border-black pb-4">Applicant: {formData.firstName} {formData.lastName}</p>
+
+            <h3 className="font-bold text-lg mb-3 uppercase bg-gray-200 p-2">Identity Verification</h3>
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              {formData.selfieUrl && (
+                <div className="border border-gray-300 p-2"><p className="font-bold text-xs mb-1 text-center">LIVE SELFIE</p><img src={formData.selfieUrl} className="w-full h-48 object-contain" /></div>
+              )}
+              {formData.idPhotoUrl && (
+                <div className="border border-gray-300 p-2"><p className="font-bold text-xs mb-1 text-center">GOVERNMENT ID</p><img src={formData.idPhotoUrl} className="w-full h-48 object-contain" /></div>
+              )}
+            </div>
+
+            <h3 className="font-bold text-lg mb-3 uppercase bg-gray-200 p-2">6-Point Collateral Inspection</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {formData.collateralPhotoFront && <div className="border border-gray-300 p-2"><p className="font-bold text-xs mb-1 text-center">FRONT VIEW</p><img src={formData.collateralPhotoFront} className="w-full h-40 object-contain" /></div>}
+              {formData.collateralPhotoRear && <div className="border border-gray-300 p-2"><p className="font-bold text-xs mb-1 text-center">REAR VIEW</p><img src={formData.collateralPhotoRear} className="w-full h-40 object-contain" /></div>}
+              {formData.collateralPhotoLeft && <div className="border border-gray-300 p-2"><p className="font-bold text-xs mb-1 text-center">LEFT VIEW</p><img src={formData.collateralPhotoLeft} className="w-full h-40 object-contain" /></div>}
+              {formData.collateralPhotoRight && <div className="border border-gray-300 p-2"><p className="font-bold text-xs mb-1 text-center">RIGHT VIEW</p><img src={formData.collateralPhotoRight} className="w-full h-40 object-contain" /></div>}
+              {formData.collateralPhotoSerial && <div className="border border-gray-300 p-2"><p className="font-bold text-xs mb-1 text-center">SERIAL / PLATE</p><img src={formData.collateralPhotoSerial} className="w-full h-40 object-contain" /></div>}
+              {formData.collateralPhotoDocument && <div className="border border-gray-300 p-2"><p className="font-bold text-xs mb-1 text-center">TITLE / ORCR</p><img src={formData.collateralPhotoDocument} className="w-full h-40 object-contain" /></div>}
+            </div>
           </div>
+
         </div>
       </div>
     </div>
