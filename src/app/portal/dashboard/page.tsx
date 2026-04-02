@@ -5,31 +5,25 @@ import ClientDashboardClient from "./ClientDashboardClient";
 
 export const dynamic = "force-dynamic";
 
-/**
- * CLIENT PORTAL DASHBOARD
- * 
- * STRICTLY READ-ONLY view of client's loan information.
- * Security: Only fetches data where client.id matches session client_id.
- */
 export default async function ClientDashboard() {
   const cookieStore = await cookies();
   
   // Verify session - CRITICAL SECURITY CHECK
   const clientSession = cookieStore.get("client_session")?.value;
   const clientIdStr = cookieStore.get("client_id")?.value;
-  const clientName = cookieStore.get("client_name")?.value || "Client";
 
-  // Redirect to login if not authenticated
   if (clientSession !== "authenticated" || !clientIdStr) {
     redirect("/portal");
   }
 
   const clientId = parseInt(clientIdStr);
 
-  // SECURITY: Only fetch data for THIS client - data isolation is mandatory
   const client = await prisma.client.findUnique({
     where: { id: clientId },
     include: {
+      messages: { // 🚀 FETCH CHAT HISTORY
+        orderBy: { createdAt: "asc" }
+      },
       loans: {
         where: { status: "ACTIVE" },
         include: {
@@ -50,36 +44,35 @@ export default async function ClientDashboard() {
     redirect("/portal");
   }
 
-  // Calculate account statistics
   let totalBorrowed = 0;
   let totalPaid = 0;
   let remainingBalance = 0;
+  let totalPenalties = 0; // 🚀 NEW: Track strict penalty fees
   let nextDueDate: Date | null = null;
   let nextDueAmount = 0;
   let nextDuePeriod = 0;
   let activeLoanId = 0;
 
-  // Process active loans
   for (const loan of client.loans) {
     totalBorrowed += Number(loan.totalRepayment);
     remainingBalance += Number(loan.totalRepayment) - Number(loan.totalPaid || 0);
     totalPaid += Number(loan.totalPaid || 0);
 
-    // Find next pending installment
     for (const inst of loan.installments) {
+      totalPenalties += Number(inst.penaltyFee || 0); // Accumulate penalties
+
       if (inst.status === "PENDING") {
         if (!nextDueDate || new Date(inst.dueDate) < nextDueDate) {
           nextDueDate = new Date(inst.dueDate);
-          nextDueAmount = Number(inst.expectedAmount);
+          nextDueAmount = Number(inst.expectedAmount) + Number(inst.penaltyFee || 0); // Include penalty in next due
           nextDuePeriod = inst.period;
           activeLoanId = loan.id;
         }
-        break; // Only get first pending for each loan
+        break; 
       }
     }
   }
 
-  // Calculate payment stats for trust score
   let totalInstallments = 0;
   let paidOnTime = 0;
   let paidLate = 0;
@@ -93,7 +86,7 @@ export default async function ClientDashboard() {
         paidOnTime++;
       } else if (inst.status === "LATE") {
         paidLate++;
-      } else if (inst.status === "PENDING") {
+      } else if (inst.status === "PENDING" || inst.status === "PARTIAL") {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (new Date(inst.dueDate) < today) {
@@ -105,17 +98,15 @@ export default async function ClientDashboard() {
     }
   }
 
-  // Calculate trust score (percentage of on-time payments)
   const trustScore = totalInstallments > 0 
     ? Math.round((paidOnTime / totalInstallments) * 100) 
     : 100;
 
-  // Determine trust tier
   let trustTier = "PRIME";
   let trustColor = "text-emerald-400";
   let trustBg = "bg-emerald-500/20";
   
-  if (trustScore < 70) {
+  if (trustScore < 70 || overdue > 0) { // Overdue forces HIGH RISK
     trustTier = "HIGH RISK";
     trustColor = "text-rose-400";
     trustBg = "bg-rose-500/20";
@@ -125,7 +116,6 @@ export default async function ClientDashboard() {
     trustBg = "bg-amber-500/20";
   }
 
-  // Serialize data for client component
   const serializedLoans = client.loans.map(loan => ({
     id: loan.id,
     principal: Number(loan.principal),
@@ -164,6 +154,7 @@ export default async function ClientDashboard() {
     totalBorrowed,
     totalPaid,
     remainingBalance,
+    totalPenalties, // 🚀 ADDED PENALTIES
     nextDueDate: nextDueDate?.toISOString() || null,
     nextDueAmount,
     nextDuePeriod,
@@ -179,7 +170,13 @@ export default async function ClientDashboard() {
       pending,
       overdue
     },
-    loans: serializedLoans
+    loans: serializedLoans,
+    messages: client.messages.map(msg => ({ // 🚀 ADDED MESSAGES
+      id: msg.id,
+      sender: msg.sender,
+      text: msg.text,
+      createdAt: msg.createdAt.toISOString()
+    }))
   };
 
   return <ClientDashboardClient data={dashboardData} />;
