@@ -281,7 +281,7 @@ export default function AgentsClient() {
       </div>
 
       {/* ========================================================= */}
-      {/* TAB 1: PENDING RECRUITS (THE NEW FEATURE) */}
+      {/* TAB 1: PENDING RECRUITS (UPGRADED SCHEMA MAPPING) */}
       {/* ========================================================= */}
       {activeTab === "PENDING" && (
         <div className="space-y-4">
@@ -299,36 +299,37 @@ export default function AgentsClient() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  {/* 🚀 REWIRED TO DISPLAY NEW DATABASE FIELDS */}
                   <div className="space-y-2 text-sm">
-                    <p className="text-zinc-500 text-xs font-bold uppercase">Financial Capacity</p>
-                    <p className="text-white"><span className="text-zinc-400">Source:</span> {app.incomeSource}</p>
-                    <p className="text-emerald-400 font-bold"><span className="text-zinc-400 font-normal">Income:</span> ₱{app.grossIncome.toLocaleString()}</p>
+                    <p className="text-zinc-500 text-xs font-bold uppercase">Operational Capacity</p>
+                    <p className="text-white"><span className="text-zinc-400">Employment:</span> {app.employment || 'N/A'}</p>
+                    <p className="text-emerald-400 font-bold"><span className="text-zinc-400 font-normal">Territory:</span> {app.territory || 'N/A'}</p>
                   </div>
                   <div className="space-y-2 text-sm">
                     <p className="text-purple-400 text-xs font-bold uppercase">Pledged Collateral</p>
-                    <p className="text-white"><span className="text-zinc-400">Type:</span> {app.assetType}</p>
-                    <p className="text-purple-400 font-bold"><span className="text-zinc-400 font-normal">Value:</span> ₱{app.assetValue.toLocaleString()}</p>
+                    <p className="text-white"><span className="text-zinc-400">Type:</span> {app.collateralType || 'N/A'}</p>
+                    <p className="text-purple-400 font-bold"><span className="text-zinc-400 font-normal">Value:</span> ₱{(app.collateralValue || 0).toLocaleString()}</p>
                   </div>
                 </div>
 
-                {/* Evidence Thumbnails */}
+                {/* Evidence Thumbnails (Updated to match new Column names) */}
                 <div className="flex gap-4 mb-6">
-                   {app.idCardData && (
+                   {app.idPhotoUrl && (
                      <div className="flex-1">
                        <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">ID Card</p>
-                       <img src={app.idCardData} alt="ID" className="h-16 w-full object-cover rounded border border-zinc-700 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" />
+                       <img src={app.idPhotoUrl} alt="ID" className="h-16 w-full object-cover rounded border border-zinc-700 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" />
                      </div>
                    )}
-                   {app.selfieData && (
+                   {app.selfieUrl && (
                      <div className="flex-1">
                        <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Selfie</p>
-                       <img src={app.selfieData} alt="Selfie" className="h-16 w-full object-cover rounded border border-zinc-700 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" />
+                       <img src={app.selfieUrl} alt="Selfie" className="h-16 w-full object-cover rounded border border-zinc-700 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" />
                      </div>
                    )}
-                   {app.signatureData && (
+                   {app.digitalSignature && (
                      <div className="flex-1">
                        <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Signature</p>
-                       <img src={app.signatureData} alt="Signature" className="h-16 w-full object-contain rounded border border-zinc-700 bg-white" />
+                       <img src={app.digitalSignature} alt="Signature" style={{ filter: 'invert(1)' }} className="h-16 w-full object-contain rounded border border-zinc-700 bg-white" />
                      </div>
                    )}
                 </div>
@@ -432,7 +433,6 @@ export default function AgentsClient() {
                 {/* Agent Identity */}
                 <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl relative">
                   
-                  {/* 🚀 NEW: CONTRACT PDF BUTTON */}
                   <div className="absolute top-4 right-4">
                      <Link href={`/agent-application/receipt?phone=${dossier.phone}`} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg transition-all border border-emerald-400/50">
                        📄 View PDF Contract
