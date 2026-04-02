@@ -33,6 +33,9 @@ interface DirectDisbursementData {
   agentId?: number | null;
 }
 
+// ==========================================
+// LOAN DISBURSEMENT ENGINE
+// ==========================================
 export async function disburseDirectLoan(data: DirectDisbursementData) {
   try {
     const portfolio = await getActivePortfolio();
@@ -78,7 +81,8 @@ export async function disburseDirectLoan(data: DirectDisbursementData) {
         startDate: startDate,
         endDate: endDate,
         portfolio,
-        status: "ACTIVE"
+        status: "ACTIVE",
+        agentId: data.agentId || null
       }
     });
 
@@ -141,5 +145,42 @@ export async function disburseDirectLoan(data: DirectDisbursementData) {
   } catch (error: any) {
     console.error("DIRECT DISBURSEMENT ERROR:", error);
     return { error: error.message || "Failed to disburse loan" };
+  }
+}
+
+// ==========================================
+// 🚀 3-WAY SECURE COMM-LINK ENGINE
+// ==========================================
+export async function sendChatMessage(clientId: number, text: string) {
+  if (!text || text.trim() === "") return { error: "Message cannot be empty." };
+
+  try {
+    const cookieStore = await cookies();
+    const userRole = cookieStore.get("user_role")?.value || "CLIENT"; 
+    const userName = cookieStore.get("user_name")?.value || "Unknown";
+
+    // Determine the sender tag
+    let sender = "CLIENT";
+    if (userRole === "ADMIN") {
+      sender = "ADMIN";
+    } else if (userRole === "AGENT") {
+      sender = `AGENT (${userName})`;
+    }
+
+    await prisma.message.create({
+      data: {
+        clientId,
+        sender,
+        text: text.trim(),
+      },
+    });
+
+    // Force Next.js to refresh the client profile page to show the new message
+    revalidatePath(`/clients/${clientId}`);
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error("Chat Error:", error);
+    return { error: "Failed to send message." };
   }
 }
