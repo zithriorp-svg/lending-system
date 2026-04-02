@@ -8,6 +8,7 @@ import SignaturePad from "@/components/SignaturePad";
 interface Agent {
   id: number;
   name: string;
+  portfolio: string; // 🚀 Added portfolio tracking to the interface
 }
 
 interface Portfolio {
@@ -34,6 +35,9 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
   
   const targetPortfolioId = targetPortfolio?.id || null;
   const targetPortfolioName = targetPortfolio?.name || "Main Portfolio";
+  
+  // 🚀 FIXED: Filter the agents array to ONLY show agents assigned to this specific portfolio!
+  const filteredAgents = agents.filter(agent => agent.portfolio === targetPortfolioName);
   
   const [principal, setPrincipal] = useState<number>(0);
   const [termType, setTermType] = useState<string>("Months");
@@ -163,7 +167,7 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
     setFormData((prev: any) => ({...prev, birthDate: bday, age: age}));
   };
 
-  const selectedAgentName = agents.find(a => a.id === parseInt(agentId))?.name || "No Agent Assigned";
+  const selectedAgentName = filteredAgents.find(a => a.id === parseInt(agentId))?.name || "No Agent Assigned";
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
@@ -334,7 +338,8 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
                 <label className="text-xs text-zinc-400 block mb-1">Assigned Agent / Co-Maker (Optional)</label>
                 <select name="agentId" value={agentId} onChange={(e) => setAgentId(e.target.value)} className="w-full bg-black border border-zinc-800 rounded p-2 text-white text-sm">
                   <option value="">No Agent Assigned</option>
-                  {agents.map((agent) => (
+                  {/* 🚀 FIXED: Using the filtered list of agents so only agents from THIS portfolio appear! */}
+                  {filteredAgents.map((agent) => (
                     <option key={agent.id} value={agent.id}>{agent.name}</option>
                   ))}
                 </select>
