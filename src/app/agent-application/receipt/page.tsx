@@ -33,9 +33,9 @@ export default async function AgentReceiptPage(props: { searchParams: Promise<{ 
         <div className="flex gap-4">
           <Link href="/agents" className="px-4 py-2 border border-zinc-700 text-zinc-300 rounded-lg text-sm hover:bg-zinc-800 transition-all">← Back to Fleet</Link>
           <button 
-            // Client component script to trigger print
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold shadow-lg transition-all"
           >
+            {/* Opens the Print Dialog natively */}
             <a href="javascript:window.print()">🖨️ Print / Save PDF</a>
           </button>
         </div>
@@ -74,11 +74,12 @@ export default async function AgentReceiptPage(props: { searchParams: Promise<{ 
           <div className="col-span-2 font-medium italic text-gray-700">{app.collateralCondition || '—'}</div>
         </div>
 
+        {/* 🚀 FIXED: Black background to make the white signature ink perfectly visible */}
         {app.digitalSignature && (
           <div className="mt-8 pt-4 border-t-2 border-black print:break-inside-avoid">
             <h2 className="font-bold text-lg mb-2 uppercase">Digital Signature</h2>
-            <div className="border-2 border-gray-300 p-4 inline-block bg-gray-50 rounded-lg">
-              <img src={app.digitalSignature} alt="Digital Signature" style={{ filter: 'invert(1)', maxHeight: '100px' }} />
+            <div className="p-4 inline-block bg-black rounded-lg border-2 border-gray-800">
+              <img src={app.digitalSignature} alt="Digital Signature" style={{ maxHeight: '100px' }} />
             </div>
             <p className="text-xs text-gray-500 mt-2 font-bold uppercase">Signatory: {app.firstName} {app.lastName}</p>
           </div>
