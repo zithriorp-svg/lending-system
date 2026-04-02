@@ -21,9 +21,7 @@ const formatDate = (date: Date | string | null | undefined): string => {
 
 const formatDateTime = (date: Date | string): string => {
   const d = new Date(date);
-  return d.toLocaleDateString('en-PH', { 
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-  });
+  return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
 interface Message { id: number; sender: string; text: string; createdAt: Date; }
@@ -33,37 +31,19 @@ interface Transaction { id: number; loanId: number; amount: number; principalPor
 interface KYCData { firstName: string; lastName: string; phone: string; address: string | null; birthDate: Date | null; age: number | null; employment: string; income: number; existingLoansDetails: string | null; monthlyDebtPayment: number | null; familySize: number | null; workingMembers: number | null; students: number | null; infants: number | null; housingStatus: string | null; rentAmount: number | null; monthlyBills: number | null; fbProfileUrl: string | null; messengerId: string | null; referenceName: string | null; referencePhone: string | null; selfieUrl: string | null; idPhotoUrl: string | null; payslipPhotoUrl: string | null; electricBillPhotoUrl: string | null; waterBillPhotoUrl: string | null; collateralUrl: string | null; locationLat: number | null; locationLng: number | null; locationUrl: string | null; digitalSignature: string | null; credibilityScore: number; aiRiskSummary: string; status: string; createdAt: Date; }
 interface ClientData { id: number; firstName: string; lastName: string; phone: string; address: string; createdAt: Date; riskScore: number; riskLevel: 'EXCELLENT' | 'MODERATE' | 'HIGH'; riskEmoji: string; riskLabel: string; riskColor: string; trustScore: number; trustTier: 'PRIME' | 'WATCH' | 'HIGH_RISK'; trustColor: string; totalPaymentsAnalyzed: number; onTimePercentage: number; paymentStats: { paidOnTime: number; paidLate: number; missed: number; pending: number; currentlyOverdue: number; }; totalBorrowed: number; totalRepaid: number; activeLoansCount: number; paidLoansCount: number; loans: Loan[]; transactions: Transaction[]; kycData: KYCData | null; messages: Message[]; }
 
-// 🚀 NEW COMPONENT: ROLLOVER BUTTON
 function RolloverButton({ loan, onComplete }: { loan: Loan, onComplete: () => void }) {
   const [processing, setProcessing] = useState(false);
-
   const handleRollover = async () => {
     const fee = Number(loan.principal) * 0.06;
     if (!confirm(`Execute 6% Rollover for TXN-${loan.id.toString().padStart(4, '0')}?\n\nThis will charge a ₱${fee.toFixed(2)} Extension Fee and push all pending due dates forward by one full cycle.\n\nProceed?`)) return;
-
     setProcessing(true);
     try {
-      const res = await fetch('/api/rollover-loan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ loanId: loan.id })
-      });
+      const res = await fetch('/api/rollover-loan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ loanId: loan.id }) });
       const data = await res.json();
-      if (data.success) {
-        alert(`Rollover Successful! ₱${data.extensionFee.toFixed(2)} fee recorded.`);
-        onComplete();
-      } else {
-        alert(data.error || 'Failed to process rollover');
-      }
-    } catch (e) {
-      alert('Network error');
-    } finally {
-      setProcessing(false);
-    }
+      if (data.success) { alert(`Rollover Successful! ₱${data.extensionFee.toFixed(2)} fee recorded.`); onComplete(); } else { alert(data.error || 'Failed to process rollover'); }
+    } catch (e) { alert('Network error'); } finally { setProcessing(false); }
   };
-
   if (loan.status === 'PAID') return null;
-
   return (
     <button onClick={handleRollover} disabled={processing} className="text-sm px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 text-amber-400 rounded-lg font-bold transition-colors flex items-center gap-1">
       {processing ? "⏳ Processing..." : "🔄 Process Rollover"}
@@ -139,18 +119,51 @@ const DocumentImage = ({ src, label }: { src: string | null; label: string }) =>
   );
 };
 
+// ====================================================================================
+// 🚀 UPGRADED COMM-LINK WITH AI ASSIST INJECTION
+// ====================================================================================
 function CentralizedChat({ clientId, messages }: { clientId: number, messages: Message[] }) {
-  const [chatInput, setChatInput] = useState(""); const [isSending, setIsSending] = useState(false); const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [chatInput, setChatInput] = useState(""); 
+  const [isSending, setIsSending] = useState(false); 
+  const [isDrafting, setIsDrafting] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  
   const handleSendChat = async (e: React.FormEvent) => {
     e.preventDefault(); if (!chatInput.trim() || isSending) return; setIsSending(true);
     const res = await sendChatMessage(clientId, chatInput);
     if (res.success) { setChatInput(""); } else { alert(res.error); }
     setIsSending(false);
   };
+
+  const handleAIDraft = async () => {
+    setIsDrafting(true);
+    try {
+      const res = await fetch("/api/chat-assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId })
+      });
+      const data = await res.json();
+      if (data.reply) {
+        setChatInput(data.reply); // Populates the text box but DOES NOT auto-send.
+      } else {
+        alert(data.error || "Matrix Error: AI Drafting Failed.");
+      }
+    } catch (e) {
+      alert("Network Error during AI Sync.");
+    } finally {
+      setIsDrafting(false);
+    }
+  };
+
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl flex flex-col h-[500px] shadow-xl overflow-hidden mt-6">
-      <div className="p-4 bg-zinc-800 border-b border-zinc-700 flex justify-between items-center"><h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">💬 Centralized Comm-Link</h2><span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">SECURE CHANNEL</span></div>
+    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl flex flex-col h-[550px] shadow-xl overflow-hidden mt-6">
+      <div className="p-4 bg-zinc-800 border-b border-zinc-700 flex justify-between items-center">
+        <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">💬 Centralized Comm-Link</h2>
+        <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">SECURE CHANNEL</span>
+      </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0c0c0e]">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-zinc-500 space-y-2"><span className="text-4xl">📭</span><p className="text-sm">No messages yet.</p></div>
@@ -167,10 +180,22 @@ function CentralizedChat({ clientId, messages }: { clientId: number, messages: M
         )}
         <div ref={messagesEndRef} />
       </div>
-      <form onSubmit={handleSendChat} className="p-3 bg-zinc-800 border-t border-zinc-700 flex gap-2">
-        <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Type a message..." disabled={isSending} className="flex-1 bg-black border border-zinc-700 text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-50" />
-        <button type="submit" disabled={isSending || !chatInput.trim()} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2 rounded-xl text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{isSending ? '...' : 'SEND'}</button>
-      </form>
+      <div className="p-3 bg-zinc-800 border-t border-zinc-700 flex flex-col gap-2">
+        <form onSubmit={handleSendChat} className="flex gap-2">
+          <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Type a message..." disabled={isSending || isDrafting} className="flex-1 bg-black border border-zinc-700 text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-50" />
+          <button type="submit" disabled={isSending || isDrafting || !chatInput.trim()} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2 rounded-xl text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{isSending ? '...' : 'SEND'}</button>
+        </form>
+        <div className="flex justify-end pr-2">
+          <button 
+            type="button" 
+            onClick={handleAIDraft} 
+            disabled={isDrafting}
+            className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1 uppercase tracking-widest disabled:opacity-50"
+          >
+            {isDrafting ? "⏳ Syncing with Matrix..." : "✨ Auto-Draft Response via Copilot"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -292,8 +317,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                     <div className="flex items-center gap-3 flex-wrap">
                       <Link href={`/clients/${client.id}/contract/${loan.id}`} target="_blank" className="text-sm px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg font-medium transition-colors">📄 Contract</Link>
                       <Link href={`/payments?loan=${loan.id}`} className="text-blue-400 text-sm hover:underline">View Payments →</Link>
-                      
-                      {/* 🚀 NEW ROLLOVER BUTTON! */}
                       <RolloverButton loan={loan} onComplete={() => router.refresh()} />
                     </div>
                   </div>
