@@ -24,20 +24,16 @@ export async function POST(req: Request) {
     });
 
     if (!loan) {
-      return NextResponse.json({ success: false, error: "Loan not found or unauthorized access" }, { status: 404 });
+      return NextResponse.json({ success: false, error: "Loan not found" }, { status: 404 });
     }
 
-    // 🚀 FIXED: We completely REMOVED the hardcoded ₱500 penalty. 
-    // The only penalty is revoking the Good Payer Discount (bumping interest to 10%)
     if (!loan.goodPayerDiscountRevoked) {
-      // 1. Mark the loan as having its discount revoked
       await prisma.loan.update({
         where: { id: loanId },
         data: { goodPayerDiscountRevoked: true }
       });
 
-      // 2. Recalculate ALL PENDING installments to 10% interest
-      const newInterestTotal = Number(loan.principal) * 0.10; // 10% instead of 6%
+      const newInterestTotal = Number(loan.principal) * 0.10; 
       const newInterestPerPeriod = newInterestTotal / loan.termDuration;
       const principalPerPeriod = Number(loan.principal) / loan.termDuration;
       const newExpectedAmount = principalPerPeriod + newInterestPerPeriod;
@@ -45,32 +41,30 @@ export async function POST(req: Request) {
       const pendingInstallments = loan.installments.filter(i => i.status === "PENDING" || i.status === "LATE");
 
       for (const inst of pendingInstallments) {
-        // Find the difference between the new 10% rate and the old 6% rate
         const difference = newExpectedAmount - Number(inst.expectedAmount);
-
-        // Update the installment by storing the difference as a 'penaltyFee' 
-        // so the system tracks it, but it mathematically equals 10% total.
         await prisma.loanInstallment.update({
           where: { id: inst.id },
-          data: {
-            penaltyFee: { increment: difference }
-          }
+          data: { penaltyFee: { increment: difference } }
         });
       }
 
-      // Log the revocation in the immutable Audit Ledger
       if (isAdmin) {
         await prisma.auditLog.create({
           data: {
-            type: 'PENALTY',
-            amount: newInterestTotal - (Number(loan.principal) * 0.06), // Log the total difference
-            referenceId: loan.id,
-            referenceType: 'LOAN',
-            description: '4% Good Payer Discount REVOKED due to delinquency.',
-            portfolio
+            type: 'PENALTY', amount: newInterestTotal - (Number(loan.principal) * 0.06),
+            referenceId: loan.id, referenceType: 'LOAN', description: '4% Good Payer Discount REVOKED.', portfolio
           }
         });
       }
+
+      // 🚀 INJECT: SYSTEM BOT SENDS MESSAGE TO COMM-LINK
+      await prisma.message.create({
+        data: {
+          clientId: loan.clientId,
+          sender: "VAULT SYSTEM",
+          text: `⚠️ CONTRACT ENFORCEMENT: Your 4% Good Payer Discount has been permanently REVOKED due to delinquent payment on TXN-${loan.id.toString().padStart(4, '0')}. Your interest rate is now locked at the standard 10%.`
+        }
+      });
     }
 
     return NextResponse.json({ success: true });
