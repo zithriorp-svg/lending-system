@@ -8,8 +8,15 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
   const [formData, setFormData] = useState<any>({
     firstName: "", lastName: "", phone: "", address: "",
     birthDate: "", territory: "", networkSize: "1-10", employment: "",
-    selfieUrl: "", idPhotoUrl: "", clearanceUrl: "", digitalSignature: "",
-    portfolio: defaultPortfolio // 🚀 LOCK THE PORTFOLIO IN STATE
+    selfieUrl: "", idPhotoUrl: "", clearanceUrl: "", 
+    
+    // 🚀 NEW COLLATERAL FIELDS
+    collateralType: "", collateralValue: "", collateralCondition: "",
+    collateralPhotoFront: "", collateralPhotoRear: "", collateralPhotoLeft: "",
+    collateralPhotoRight: "", collateralPhotoSerial: "", collateralPhotoDocument: "",
+
+    digitalSignature: "",
+    portfolio: defaultPortfolio
   });
 
   const [status, setStatus] = useState("");
@@ -79,7 +86,6 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
       <div className="max-w-md mx-auto">
         <div className="text-center mb-6 pt-4 print:hidden">
           <h1 className="text-3xl font-serif font-bold text-gray-200 mb-2">Field Agent<br/>Application</h1>
-          {/* 🚀 SHOW THE APPLICANT WHICH PORTFOLIO THEY ARE JOINING */}
           <span className="bg-purple-900/30 text-purple-400 border border-purple-500/30 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest inline-block mb-3">
             DIVISION: {defaultPortfolio}
           </span>
@@ -142,8 +148,60 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
             </div>
           </div>
 
+          {/* 🚀 SEC 4: THE COLLATERAL DECLARATION */}
           <div className="print:hidden">
-            <h2 className="text-red-400 font-bold text-lg mb-3 uppercase tracking-wider">4. Commission Agreement & Legal Consent</h2>
+            <h2 className="text-purple-400 font-bold text-lg mb-1 uppercase tracking-wider">4. Collateral Declaration</h2>
+            <p className="text-xs text-zinc-400 mb-3 leading-relaxed">Provide details of the asset you are pledging as a guarantee against client default. This asset will be seized if obligations are unmet.</p>
+            <div className={`${borderStyle} p-4 space-y-4`}>
+              
+              <div>
+                <label className="text-xs text-zinc-400 font-bold uppercase tracking-widest block mb-1">Asset Type</label>
+                <select required name="collateralType" className="w-full bg-black border border-zinc-800 rounded p-3 text-white text-sm" value={formData.collateralType} onChange={e => setFormData({...formData, collateralType: e.target.value})}>
+                  <option value="">Select Category...</option>
+                  <option value="Electronics">Electronics (Laptop, Phone, Tablet)</option>
+                  <option value="Vehicle">Vehicle (Motorcycle, Car)</option>
+                  <option value="Real Estate">Real Estate / Land</option>
+                  <option value="Jewelry">Jewelry / Watches</option>
+                  <option value="Other">Other Valuable Asset</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs text-zinc-400 font-bold uppercase tracking-widest block mb-1">Estimated Market Value (₱)</label>
+                <input required type="number" name="collateralValue" placeholder="e.g. 150000" className="w-full bg-black border border-zinc-800 rounded p-3 text-white text-sm" onChange={e => setFormData({...formData, collateralValue: e.target.value})} />
+              </div>
+
+              <div>
+                <label className="text-xs text-zinc-400 font-bold uppercase tracking-widest block mb-1">Asset Specifications & Condition</label>
+                <textarea required rows={3} name="collateralCondition" placeholder="Include Make, Model, Year, Serial Number, OR/CR Number, and current physical condition..." className="w-full bg-black border border-zinc-800 rounded p-3 text-white text-sm" onChange={e => setFormData({...formData, collateralCondition: e.target.value})}></textarea>
+              </div>
+
+              <div className="pt-2 border-t border-zinc-800">
+                <label className="text-xs text-zinc-400 font-bold uppercase tracking-widest block mb-3">Asset Photographic Evidence</label>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {[
+                    {field: 'collateralPhotoFront', label: '📸 FRONT VIEW'},
+                    {field: 'collateralPhotoRear', label: '📸 REAR / SIDE VIEW'},
+                    {field: 'collateralPhotoLeft', label: '📸 LEFT VIEW'},
+                    {field: 'collateralPhotoRight', label: '📸 RIGHT VIEW'},
+                    {field: 'collateralPhotoSerial', label: '🔍 SERIAL / PLATE'},
+                    {field: 'collateralPhotoDocument', label: '📄 TITLE / ORCR'}
+                  ].map(item => (
+                    <div key={item.field} className="bg-[#1c1c21] border border-[#2a2a35] rounded-lg p-3 text-center flex flex-col justify-center items-center">
+                      <label className="block text-gray-400 text-[10px] mb-2 font-bold uppercase tracking-widest w-full cursor-pointer">
+                        {item.label}
+                        <input required name={item.field} type="file" accept="image/*" className="w-full text-[10px] text-gray-500 mt-2" onChange={e => handleImage(e, item.field)} />
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div className="print:hidden">
+            <h2 className="text-red-400 font-bold text-lg mb-3 uppercase tracking-wider">5. Binding Agreement & Signature</h2>
             <div className={`${borderStyle} p-4 space-y-4`}>
               <div className="border border-zinc-700 p-4 text-sm text-zinc-300 print:break-inside-avoid print:mb-4 print:bg-white print:border-black print:text-black">
                 <h3 className="font-bold text-white mb-2 uppercase print:text-black">Agent Commission & Remittance Agreement</h3>
@@ -159,9 +217,11 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
                 <label className="block text-zinc-400 text-xs mb-2 uppercase tracking-widest print:text-black">Digital Signature (Sign Below)</label>
                 <SignaturePad onSignature={(dataUrl) => setFormData(prev => ({...prev, digitalSignature: dataUrl}))} />
               </div>
-              <div className="flex items-center gap-2 text-xs text-zinc-500 print:text-black">
-                <input type="checkbox" required className="w-4 h-4 accent-emerald-500 print:hidden" />
-                <span className="break-words">I have read and agree to the Commission & Remittance Agreement above</span>
+              <div className="flex items-start gap-3 text-xs text-zinc-500 print:text-black">
+                <input type="checkbox" required className="w-5 h-5 accent-emerald-500 mt-0.5 print:hidden" />
+                <span className="break-words leading-relaxed text-zinc-300">
+                  <strong className="text-white">I acknowledge that I am applying as a Co-Maker.</strong> If any client assigned to me defaults on their loan, I agree that the unpaid balance will be legally charged to me, and my pledged collateral listed above may be seized by FinTech Vault.
+                </span>
               </div>
             </div>
           </div>
@@ -179,12 +239,22 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
             <div className="font-semibold">Address:</div><div>{formData.address || '—'}</div>
             <div className="font-semibold">Birth Date:</div><div>{formData.birthDate || '—'}</div>
           </div>
+          
           <h2 className="font-bold text-lg border-b border-black pb-2 mb-4">TERRITORY & CAPACITY</h2>
           <div className="grid grid-cols-2 gap-y-2 text-sm mb-6">
             <div className="font-semibold">Primary Territory:</div><div>{formData.territory || '—'}</div>
             <div className="font-semibold">Network Size:</div><div>{formData.networkSize || '—'}</div>
             <div className="font-semibold">Employment/Business:</div><div>{formData.employment || '—'}</div>
           </div>
+
+          <h2 className="font-bold text-lg border-b border-black pb-2 mb-4">PLEDGED COLLATERAL DECLARATION</h2>
+          <div className="grid grid-cols-2 gap-y-2 text-sm mb-6">
+            <div className="font-semibold">Asset Type:</div><div>{formData.collateralType || '—'}</div>
+            <div className="font-semibold">Market Value:</div><div>₱{formData.collateralValue || '—'}</div>
+            <div className="font-semibold col-span-2 mt-2">Specifications & Condition:</div>
+            <div className="col-span-2">{formData.collateralCondition || '—'}</div>
+          </div>
+
           {formData.digitalSignature && (
             <div className="mt-6 pt-4 border-t-2 border-black print:break-inside-avoid print:mb-4">
               <h2 className="font-bold text-lg mb-3">DIGITAL SIGNATURE</h2>
