@@ -1,105 +1,82 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { cookies } from "next/headers";
 import { getActivePortfolio } from "@/lib/portfolio";
 
-export const dynamic = "force-dynamic";
-
-/**
- * ENFORCEMENT PROTOCOL: Late Penalty & Rebate Revocation
- * 
- * POST: Apply penalty fee and revoke Good Payer Discount
- * - Adds ₱500 late fee to installment's penaltyFee
- * - Revokes 4% Good Payer Discount on the loan
- */
-
-const LATE_FEE_AMOUNT = 500; // Fixed late fee
-
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const portfolio = await getActivePortfolio();
-    const body = await request.json();
+    const cookieStore = await cookies();
+    const userRole = cookieStore.get("user_role")?.value || "AGENT";
+    const isAdmin = userRole === "ADMIN";
+    
+    const body = await req.json();
     const { installmentId, loanId } = body;
 
     if (!installmentId || !loanId) {
-      return NextResponse.json({ 
-        error: 'installmentId and loanId are required' 
-      }, { status: 400 });
+      return NextResponse.json({ success: false, error: "Missing parameters" }, { status: 400 });
     }
 
-    // Verify installment exists and belongs to this portfolio
-    const installment = await prisma.loanInstallment.findFirst({
-      where: { id: installmentId },
-      include: { 
-        loan: {
-          include: { client: true }
-        } 
-      }
+    const portfolio = await getActivePortfolio();
+
+    const loan = await prisma.loan.findFirst({
+      where: { id: loanId, portfolio },
+      include: { installments: true }
     });
 
-    if (!installment || installment.loan.portfolio !== portfolio) {
-      return NextResponse.json({ 
-        error: 'Installment not found' 
-      }, { status: 404 });
+    if (!loan) {
+      return NextResponse.json({ success: false, error: "Loan not found or unauthorized access" }, { status: 404 });
     }
 
-    // Get the loan principal for calculating the revoked discount amount
-    const loanPrincipal = Number(installment.loan.principal);
-    const revokedDiscountAmount = loanPrincipal * 0.04; // 4% of principal
-
-    // Apply penalty fee and revoke discount in a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Add late fee to installment
-      const updatedInstallment = await tx.loanInstallment.update({
-        where: { id: installmentId },
-        data: {
-          penaltyFee: installment.penaltyFee + LATE_FEE_AMOUNT,
-          status: 'LATE' // Ensure status reflects late payment
-        }
-      });
-
-      // 2. Revoke Good Payer Discount on the loan (if not already revoked)
-      const updatedLoan = await tx.loan.update({
+    // 🚀 FIXED: We completely REMOVED the hardcoded ₱500 penalty. 
+    // The only penalty is revoking the Good Payer Discount (bumping interest to 10%)
+    if (!loan.goodPayerDiscountRevoked) {
+      // 1. Mark the loan as having its discount revoked
+      await prisma.loan.update({
         where: { id: loanId },
-        data: {
-          goodPayerDiscountRevoked: true
-        }
+        data: { goodPayerDiscountRevoked: true }
       });
 
-      // 3. Create a collection note documenting the enforcement action
-      await tx.collectionNote.create({
-        data: {
-          installmentId,
-          note: `🚨 ENFORCEMENT: ₱${LATE_FEE_AMOUNT} late fee applied. Good Payer Discount (₱${revokedDiscountAmount.toFixed(2)}) REVOKED. Total penalties: ₱${updatedInstallment.penaltyFee}`
-        }
-      });
+      // 2. Recalculate ALL PENDING installments to 10% interest
+      const newInterestTotal = Number(loan.principal) * 0.10; // 10% instead of 6%
+      const newInterestPerPeriod = newInterestTotal / loan.termDuration;
+      const principalPerPeriod = Number(loan.principal) / loan.termDuration;
+      const newExpectedAmount = principalPerPeriod + newInterestPerPeriod;
 
-      return { installment: updatedInstallment, loan: updatedLoan };
-    });
+      const pendingInstallments = loan.installments.filter(i => i.status === "PENDING" || i.status === "LATE");
 
-    return NextResponse.json({
-      success: true,
-      message: `Penalty applied successfully`,
-      details: {
-        lateFee: LATE_FEE_AMOUNT,
-        revokedDiscount: revokedDiscountAmount,
-        totalPenaltyFee: Number(result.installment.penaltyFee),
-        discountRevoked: result.loan.goodPayerDiscountRevoked
-      },
-      installment: {
-        id: result.installment.id,
-        penaltyFee: Number(result.installment.penaltyFee),
-        status: result.installment.status
-      },
-      loan: {
-        id: result.loan.id,
-        goodPayerDiscountRevoked: result.loan.goodPayerDiscountRevoked
+      for (const inst of pendingInstallments) {
+        // Find the difference between the new 10% rate and the old 6% rate
+        const difference = newExpectedAmount - Number(inst.expectedAmount);
+
+        // Update the installment by storing the difference as a 'penaltyFee' 
+        // so the system tracks it, but it mathematically equals 10% total.
+        await prisma.loanInstallment.update({
+          where: { id: inst.id },
+          data: {
+            penaltyFee: { increment: difference }
+          }
+        });
       }
-    });
 
-  } catch (error) {
-    console.error('Enforcement penalty error:', error);
-    return NextResponse.json({ 
-      error: 'Failed to apply penalty' 
-    }, { status: 500 });
+      // Log the revocation in the immutable Audit Ledger
+      if (isAdmin) {
+        await prisma.auditLog.create({
+          data: {
+            type: 'PENALTY',
+            amount: newInterestTotal - (Number(loan.principal) * 0.06), // Log the total difference
+            referenceId: loan.id,
+            referenceType: 'LOAN',
+            description: '4% Good Payer Discount REVOKED due to delinquency.',
+            portfolio
+          }
+        });
+      }
+    }
+
+    return NextResponse.json({ success: true });
+
+  } catch (error: any) {
+    console.error("Penalty Error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
