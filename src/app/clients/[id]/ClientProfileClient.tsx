@@ -26,81 +26,64 @@ const formatDateTime = (date: Date | string): string => {
   });
 };
 
-interface Message {
-  id: number;
-  sender: string;
-  text: string;
-  createdAt: Date;
-}
+interface Message { id: number; sender: string; text: string; createdAt: Date; }
+interface Installment { id: number; period: number; dueDate: Date; expectedAmount: number; principal: number; interest: number; penaltyFee: number; status: string; paymentDate: Date | null; amountPaid?: number; }
+interface Loan { id: number; principal: number; interestRate: number; termDuration: number; termType: string; totalRepayment: number; totalPaid: number; remainingBalance: number; startDate: Date; endDate: Date; createdAt: Date; status: string; installmentsCount: number; paidInstallments: number; totalInterestPaid: number; totalPenaltiesPaid: number; agentCommissions: number; netLoanProfit: number; agentName: string | null; installments: Installment[]; }
+interface Transaction { id: number; loanId: number; amount: number; principalPortion: number; interestPortion: number; paymentDate: Date; paymentType: string; periodNumber: number; }
+interface KYCData { firstName: string; lastName: string; phone: string; address: string | null; birthDate: Date | null; age: number | null; employment: string; income: number; existingLoansDetails: string | null; monthlyDebtPayment: number | null; familySize: number | null; workingMembers: number | null; students: number | null; infants: number | null; housingStatus: string | null; rentAmount: number | null; monthlyBills: number | null; fbProfileUrl: string | null; messengerId: string | null; referenceName: string | null; referencePhone: string | null; selfieUrl: string | null; idPhotoUrl: string | null; payslipPhotoUrl: string | null; electricBillPhotoUrl: string | null; waterBillPhotoUrl: string | null; collateralUrl: string | null; locationLat: number | null; locationLng: number | null; locationUrl: string | null; digitalSignature: string | null; credibilityScore: number; aiRiskSummary: string; status: string; createdAt: Date; }
+interface ClientData { id: number; firstName: string; lastName: string; phone: string; address: string; createdAt: Date; riskScore: number; riskLevel: 'EXCELLENT' | 'MODERATE' | 'HIGH'; riskEmoji: string; riskLabel: string; riskColor: string; trustScore: number; trustTier: 'PRIME' | 'WATCH' | 'HIGH_RISK'; trustColor: string; totalPaymentsAnalyzed: number; onTimePercentage: number; paymentStats: { paidOnTime: number; paidLate: number; missed: number; pending: number; currentlyOverdue: number; }; totalBorrowed: number; totalRepaid: number; activeLoansCount: number; paidLoansCount: number; loans: Loan[]; transactions: Transaction[]; kycData: KYCData | null; messages: Message[]; }
 
-interface Installment {
-  id: number; period: number; dueDate: Date; expectedAmount: number;
-  principal: number; interest: number; penaltyFee: number; status: string;
-  paymentDate: Date | null; amountPaid?: number;
-}
+// 🚀 NEW COMPONENT: ROLLOVER BUTTON
+function RolloverButton({ loan, onComplete }: { loan: Loan, onComplete: () => void }) {
+  const [processing, setProcessing] = useState(false);
 
-interface Loan {
-  id: number; principal: number; interestRate: number; termDuration: number;
-  termType: string; totalRepayment: number; totalPaid: number; remainingBalance: number;
-  startDate: Date; endDate: Date; createdAt: Date; status: string;
-  installmentsCount: number; paidInstallments: number; totalInterestPaid: number;
-  totalPenaltiesPaid: number; agentCommissions: number; netLoanProfit: number;
-  agentName: string | null; installments: Installment[];
-}
+  const handleRollover = async () => {
+    const fee = Number(loan.principal) * 0.06;
+    if (!confirm(`Execute 6% Rollover for TXN-${loan.id.toString().padStart(4, '0')}?\n\nThis will charge a ₱${fee.toFixed(2)} Extension Fee and push all pending due dates forward by one full cycle.\n\nProceed?`)) return;
 
-interface Transaction {
-  id: number; loanId: number; amount: number; principalPortion: number;
-  interestPortion: number; paymentDate: Date; paymentType: string; periodNumber: number;
-}
+    setProcessing(true);
+    try {
+      const res = await fetch('/api/rollover-loan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loanId: loan.id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Rollover Successful! ₱${data.extensionFee.toFixed(2)} fee recorded.`);
+        onComplete();
+      } else {
+        alert(data.error || 'Failed to process rollover');
+      }
+    } catch (e) {
+      alert('Network error');
+    } finally {
+      setProcessing(false);
+    }
+  };
 
-interface KYCData {
-  firstName: string; lastName: string; phone: string; address: string | null;
-  birthDate: Date | null; age: number | null; employment: string; income: number;
-  existingLoansDetails: string | null; monthlyDebtPayment: number | null;
-  familySize: number | null; workingMembers: number | null; students: number | null;
-  infants: number | null; housingStatus: string | null; rentAmount: number | null;
-  monthlyBills: number | null; fbProfileUrl: string | null; messengerId: string | null;
-  referenceName: string | null; referencePhone: string | null; selfieUrl: string | null;
-  idPhotoUrl: string | null; payslipPhotoUrl: string | null; electricBillPhotoUrl: string | null;
-  waterBillPhotoUrl: string | null; collateralUrl: string | null; locationLat: number | null;
-  locationLng: number | null; locationUrl: string | null; digitalSignature: string | null;
-  credibilityScore: number; aiRiskSummary: string; status: string; createdAt: Date;
-}
+  if (loan.status === 'PAID') return null;
 
-interface ClientData {
-  id: number; firstName: string; lastName: string; phone: string; address: string;
-  createdAt: Date; riskScore: number; riskLevel: 'EXCELLENT' | 'MODERATE' | 'HIGH';
-  riskEmoji: string; riskLabel: string; riskColor: string; trustScore: number;
-  trustTier: 'PRIME' | 'WATCH' | 'HIGH_RISK'; trustColor: string; totalPaymentsAnalyzed: number;
-  onTimePercentage: number;
-  paymentStats: { paidOnTime: number; paidLate: number; missed: number; pending: number; currentlyOverdue: number; };
-  totalBorrowed: number; totalRepaid: number; activeLoansCount: number; paidLoansCount: number;
-  loans: Loan[]; transactions: Transaction[]; kycData: KYCData | null;
-  messages: Message[];
+  return (
+    <button onClick={handleRollover} disabled={processing} className="text-sm px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 text-amber-400 rounded-lg font-bold transition-colors flex items-center gap-1">
+      {processing ? "⏳ Processing..." : "🔄 Process Rollover"}
+    </button>
+  );
 }
 
 function DossierFBNotifyButton({ client, loan, inst }: { client: ClientData, loan: Loan, inst: Installment }) {
   const [copied, setCopied] = useState(false);
-
   const handleNotify = () => {
     let message = "";
     const isOverdue = new Date(inst.dueDate) < new Date() && inst.status !== 'PAID';
-
-    if (inst.status === 'PAID') {
-      message = generatePaymentReceipt({ clientName: client.firstName, amount: inst.amountPaid || inst.expectedAmount, paymentDate: inst.paymentDate || new Date(), periodNumber: inst.period, loan: loan as any });
-    } else if (isOverdue) {
-      const baseAmount = inst.expectedAmount;
-      const discountAmount = baseAmount * 0.04;
-      const totalAmount = baseAmount + discountAmount + (inst.penaltyFee || 0);
+    if (inst.status === 'PAID') { message = generatePaymentReceipt({ clientName: client.firstName, amount: inst.amountPaid || inst.expectedAmount, paymentDate: inst.paymentDate || new Date(), periodNumber: inst.period, loan: loan as any }); }
+    else if (isOverdue) {
+      const baseAmount = inst.expectedAmount; const discountAmount = baseAmount * 0.04; const totalAmount = baseAmount + discountAmount + (inst.penaltyFee || 0);
       const daysLate = Math.floor((new Date().getTime() - new Date(inst.dueDate).getTime()) / (1000 * 60 * 60 * 24));
       message = generateOverdueNotice({ clientName: client.firstName, periodNumber: inst.period, daysLate: daysLate > 0 ? daysLate : 1, baseAmount, discountAmount, penaltyAmount: inst.penaltyFee || 0, totalAmount, dueDate: inst.dueDate, loan: loan as any });
-    } else {
-      message = generatePaymentReminder({ clientName: client.firstName, amount: inst.expectedAmount, periodNumber: inst.period, dueDate: inst.dueDate, loan: loan as any });
-    }
-
+    } else { message = generatePaymentReminder({ clientName: client.firstName, amount: inst.expectedAmount, periodNumber: inst.period, dueDate: inst.dueDate, loan: loan as any }); }
     sendFBNotification({ message, clientName: `${client.firstName} ${client.lastName}`, fbProfileUrl: client.kycData?.fbProfileUrl, messengerId: client.kycData?.messengerId, onCopy: () => { setCopied(true); setTimeout(() => setCopied(false), 2000); } });
   };
-
   return (
     <button onClick={handleNotify} className={`flex items-center gap-1 px-2 py-1 text-[10px] uppercase font-bold rounded transition-all whitespace-nowrap ${copied ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600/40'}`} title="Send Full-Force Ledger Update via FB">
       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.092.301 2.246.464 3.443.464 6.627 0 12-4.974 12-11.111S18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.26L19.752 8l-6.561 6.963z"/></svg>
@@ -115,24 +98,14 @@ const RiskBadge = ({ client }: { client: ClientData }) => {
   return (
     <div className={`flex items-center gap-2 px-4 py-2 rounded-xl ${style.bg} shadow-lg`}>
       <span className="text-xl">{client.riskEmoji}</span>
-      <div className="flex flex-col">
-        <span className={`text-xs font-bold ${style.text} uppercase tracking-wider`}>{client.riskLabel}</span>
-        <span className={`text-lg font-black ${style.text}`}>{client.riskScore}/100</span>
-      </div>
+      <div className="flex flex-col"><span className={`text-xs font-bold ${style.text} uppercase tracking-wider`}>{client.riskLabel}</span><span className={`text-lg font-black ${style.text}`}>{client.riskScore}/100</span></div>
     </div>
   );
 };
 
 const TrustScoreGauge = ({ client }: { client: ClientData }) => {
-  const tierConfig = {
-    'PRIME': { color: 'text-emerald-400', bg: 'bg-emerald-500/20', border: 'border-emerald-500/50', label: 'PRIME BORROWER', icon: '🏆' },
-    'WATCH': { color: 'text-yellow-400', bg: 'bg-yellow-500/20', border: 'border-yellow-500/50', label: 'WATCH LIST', icon: '⚠️' },
-    'HIGH_RISK': { color: 'text-red-400', bg: 'bg-red-500/20', border: 'border-red-500/50', label: 'HIGH RISK', icon: '🚨' }
-  };
-  const config = tierConfig[client.trustTier];
-  const circumference = 2 * Math.PI * 45;
-  const strokeDashoffset = circumference - (client.trustScore / 100) * circumference;
-  
+  const tierConfig = { 'PRIME': { color: 'text-emerald-400', bg: 'bg-emerald-500/20', border: 'border-emerald-500/50', label: 'PRIME BORROWER', icon: '🏆' }, 'WATCH': { color: 'text-yellow-400', bg: 'bg-yellow-500/20', border: 'border-yellow-500/50', label: 'WATCH LIST', icon: '⚠️' }, 'HIGH_RISK': { color: 'text-red-400', bg: 'bg-red-500/20', border: 'border-red-500/50', label: 'HIGH RISK', icon: '🚨' } };
+  const config = tierConfig[client.trustTier]; const circumference = 2 * Math.PI * 45; const strokeDashoffset = circumference - (client.trustScore / 100) * circumference;
   return (
     <div className={`${config.bg} ${config.border} border rounded-2xl p-4`}>
       <div className="flex items-center gap-4">
@@ -141,20 +114,13 @@ const TrustScoreGauge = ({ client }: { client: ClientData }) => {
             <circle cx="48" cy="48" r="45" stroke="currentColor" strokeWidth="8" fill="none" className="text-zinc-700" />
             <circle cx="48" cy="48" r="45" stroke="currentColor" strokeWidth="8" fill="none" strokeLinecap="round" className={config.color} style={{ strokeDasharray: circumference, strokeDashoffset }} />
           </svg>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className={`text-2xl font-black ${config.color}`}>{client.trustScore}</span>
-          </div>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><span className={`text-2xl font-black ${config.color}`}>{client.trustScore}</span></div>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg">{config.icon}</span>
-            <span className={`text-sm font-bold ${config.color} uppercase tracking-wider`}>{config.label}</span>
-          </div>
+          <div className="flex items-center gap-2 mb-1"><span className="text-lg">{config.icon}</span><span className={`text-sm font-bold ${config.color} uppercase tracking-wider`}>{config.label}</span></div>
           <p className="text-xs text-zinc-500">Based on {client.totalPaymentsAnalyzed} payment{client.totalPaymentsAnalyzed !== 1 ? 's' : ''} analyzed</p>
           <div className="mt-2 flex items-center gap-2">
-            <div className="flex-1 h-1.5 bg-zinc-700 rounded-full overflow-hidden">
-              <div className={`h-full transition-all duration-500 ${config.color.replace('text-', 'bg-')}`} style={{ width: `${client.trustScore}%` }} />
-            </div>
+            <div className="flex-1 h-1.5 bg-zinc-700 rounded-full overflow-hidden"><div className={`h-full transition-all duration-500 ${config.color.replace('text-', 'bg-')}`} style={{ width: `${client.trustScore}%` }} /></div>
             <span className="text-xs text-zinc-500">{client.trustScore}%</span>
           </div>
         </div>
@@ -173,74 +139,37 @@ const DocumentImage = ({ src, label }: { src: string | null; label: string }) =>
   );
 };
 
-// 🚀 CENTRALIZED CHAT COMPONENT
 function CentralizedChat({ clientId, messages }: { clientId: number, messages: Message[] }) {
-  const [chatInput, setChatInput] = useState("");
-  const [isSending, setIsSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
+  const [chatInput, setChatInput] = useState(""); const [isSending, setIsSending] = useState(false); const messagesEndRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
   const handleSendChat = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim() || isSending) return;
-
-    setIsSending(true);
+    e.preventDefault(); if (!chatInput.trim() || isSending) return; setIsSending(true);
     const res = await sendChatMessage(clientId, chatInput);
-    if (res.success) {
-      setChatInput("");
-    } else {
-      alert(res.error);
-    }
+    if (res.success) { setChatInput(""); } else { alert(res.error); }
     setIsSending(false);
   };
-
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl flex flex-col h-[500px] shadow-xl overflow-hidden mt-6">
-      <div className="p-4 bg-zinc-800 border-b border-zinc-700 flex justify-between items-center">
-        <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">💬 Centralized Comm-Link</h2>
-        <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">SECURE CHANNEL</span>
-      </div>
-      
+      <div className="p-4 bg-zinc-800 border-b border-zinc-700 flex justify-between items-center"><h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">💬 Centralized Comm-Link</h2><span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">SECURE CHANNEL</span></div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0c0c0e]">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-zinc-500 space-y-2">
-            <span className="text-4xl">📭</span>
-            <p className="text-sm">No messages yet.</p>
-            <p className="text-xs">Start the conversation with the client or agent.</p>
-          </div>
+          <div className="h-full flex flex-col items-center justify-center text-zinc-500 space-y-2"><span className="text-4xl">📭</span><p className="text-sm">No messages yet.</p></div>
         ) : (
           messages.map((msg) => {
-            const isAdmin = msg.sender === "ADMIN";
-            const isClient = msg.sender === "CLIENT";
-            const isAgent = msg.sender.startsWith("AGENT");
-
+            const isAdmin = msg.sender === "ADMIN"; const isClient = msg.sender === "CLIENT"; const isAgent = msg.sender.startsWith("AGENT");
             return (
               <div key={msg.id} className={`flex flex-col ${isClient ? 'items-start' : 'items-end'}`}>
-                <span className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isAdmin ? 'text-blue-400' : isAgent ? 'text-amber-400' : 'text-emerald-400'}`}>
-                  {msg.sender} • {formatDateTime(msg.createdAt.toString())}
-                </span>
-                <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${isAdmin ? 'bg-blue-600 text-white rounded-tr-none' : isAgent ? 'bg-amber-600 text-white rounded-tr-none' : 'bg-zinc-800 text-zinc-200 rounded-tl-none border border-zinc-700'}`}>
-                  {msg.text}
-                </div>
+                <span className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isAdmin ? 'text-blue-400' : isAgent ? 'text-amber-400' : 'text-emerald-400'}`}>{msg.sender} • {formatDateTime(msg.createdAt.toString())}</span>
+                <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${isAdmin ? 'bg-blue-600 text-white rounded-tr-none' : isAgent ? 'bg-amber-600 text-white rounded-tr-none' : 'bg-zinc-800 text-zinc-200 rounded-tl-none border border-zinc-700'}`}>{msg.text}</div>
               </div>
             );
           })
         )}
         <div ref={messagesEndRef} />
       </div>
-
       <form onSubmit={handleSendChat} className="p-3 bg-zinc-800 border-t border-zinc-700 flex gap-2">
-        <input 
-          type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)}
-          placeholder="Type a message..." disabled={isSending}
-          className="flex-1 bg-black border border-zinc-700 text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-50"
-        />
-        <button type="submit" disabled={isSending || !chatInput.trim()} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2 rounded-xl text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-          {isSending ? '...' : 'SEND'}
-        </button>
+        <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Type a message..." disabled={isSending} className="flex-1 bg-black border border-zinc-700 text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-50" />
+        <button type="submit" disabled={isSending || !chatInput.trim()} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2 rounded-xl text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{isSending ? '...' : 'SEND'}</button>
       </form>
     </div>
   );
@@ -253,79 +182,43 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
   const [activeTab, setActiveTab] = useState<TabType>('dossier');
   const hasKYC = !!client.kycData;
 
-  const handleDisburseComplete = () => {
-    router.refresh();
-    setActiveTab('loans');
-  };
+  const handleDisburseComplete = () => { router.refresh(); setActiveTab('loans'); };
 
   const tabs: { id: TabType; label: string }[] = [
-    { id: 'dossier', label: '📋 KYC Dossier' },
-    { id: 'loans', label: '💰 Loans' },
-    { id: 'transactions', label: '📄 Transactions' },
-    { id: 'chat', label: `💬 Comm-Link (${client.messages?.length || 0})` },
-    { id: 'new-loan', label: '➕ New Loan' }
+    { id: 'dossier', label: '📋 KYC Dossier' }, { id: 'loans', label: '💰 Loans' }, { id: 'transactions', label: '📄 Transactions' },
+    { id: 'chat', label: `💬 Comm-Link (${client.messages?.length || 0})` }, { id: 'new-loan', label: '➕ New Loan' }
   ];
 
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6 pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pt-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white">{client.firstName} {client.lastName}</h1>
-          <p className="text-zinc-500 text-sm">Client Master Dossier • ID: {client.id}</p>
-        </div>
+        <div><h1 className="text-2xl font-bold text-white">{client.firstName} {client.lastName}</h1><p className="text-zinc-500 text-sm">Client Master Dossier • ID: {client.id}</p></div>
         <div className="flex items-center gap-3 flex-wrap">
           <RiskBadge client={client} />
-          <Link href={`/clients/${client.id}/receipt`} target="_blank" className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded text-sm border border-zinc-600 transition-colors">
-            📄 View Original Application Receipt
-          </Link>
+          <Link href={`/clients/${client.id}/receipt`} target="_blank" className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded text-sm border border-zinc-600 transition-colors">📄 View Original Application Receipt</Link>
           <Link href="/" className="text-sm text-blue-400 hover:underline">← Dashboard</Link>
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-xl">
-          <p className="text-xs text-zinc-500 uppercase mb-2">Total Borrowed</p>
-          <p className="text-xl font-bold text-white">{formatCurrency(client.totalBorrowed)}</p>
-        </div>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-xl">
-          <p className="text-xs text-zinc-500 uppercase mb-2">Total Repaid</p>
-          <p className="text-xl font-bold text-emerald-400">{formatCurrency(client.totalRepaid)}</p>
-        </div>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-xl">
-          <p className="text-xs text-zinc-500 uppercase mb-2">Active Loans</p>
-          <p className="text-xl font-bold text-blue-400">{client.activeLoansCount}</p>
-        </div>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-xl">
-          <p className="text-xs text-zinc-500 uppercase mb-2">Completed Loans</p>
-          <p className="text-xl font-bold text-white">{client.paidLoansCount}</p>
-        </div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-xl"><p className="text-xs text-zinc-500 uppercase mb-2">Total Borrowed</p><p className="text-xl font-bold text-white">{formatCurrency(client.totalBorrowed)}</p></div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-xl"><p className="text-xs text-zinc-500 uppercase mb-2">Total Repaid</p><p className="text-xl font-bold text-emerald-400">{formatCurrency(client.totalRepaid)}</p></div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-xl"><p className="text-xs text-zinc-500 uppercase mb-2">Active Loans</p><p className="text-xl font-bold text-blue-400">{client.activeLoansCount}</p></div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-xl"><p className="text-xs text-zinc-500 uppercase mb-2">Completed Loans</p><p className="text-xl font-bold text-white">{client.paidLoansCount}</p></div>
       </div>
 
       <TrustScoreGauge client={client} />
 
       <div className="relative z-10 flex gap-2 bg-zinc-900 p-1 rounded-xl overflow-x-auto">
         {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
-              activeTab === tab.id 
-                ? tab.id === 'new-loan' ? 'bg-emerald-600 text-white' : 'bg-blue-600 text-white' 
-                : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-            }`}
-          >
-            {tab.label}
-          </button>
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${activeTab === tab.id ? tab.id === 'new-loan' ? 'bg-emerald-600 text-white' : 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}>{tab.label}</button>
         ))}
       </div>
 
       {activeTab === 'dossier' && (
         <div className="space-y-6">
           {!hasKYC ? (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-10 text-center">
-              <p className="text-zinc-500">No KYC application data available for this client.</p>
-              <p className="text-zinc-600 text-sm mt-2">The client was created before KYC tracking was implemented.</p>
-            </div>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-10 text-center"><p className="text-zinc-500">No KYC application data available for this client.</p></div>
           ) : (
             <>
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
@@ -396,9 +289,12 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                       </div>
                       <p className="text-zinc-400 text-sm mt-1">{formatDate(loan.startDate)} → {formatDate(loan.endDate)}</p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <Link href={`/clients/${client.id}/contract/${loan.id}`} target="_blank" className="text-sm px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg font-medium transition-colors">📄 Contract</Link>
                       <Link href={`/payments?loan=${loan.id}`} className="text-blue-400 text-sm hover:underline">View Payments →</Link>
+                      
+                      {/* 🚀 NEW ROLLOVER BUTTON! */}
+                      <RolloverButton loan={loan} onComplete={() => router.refresh()} />
                     </div>
                   </div>
                   
@@ -481,7 +377,6 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
         </div>
       )}
 
-      {/* 🚀 NEW CHAT TAB */}
       {activeTab === 'chat' && (
         <CentralizedChat clientId={client.id} messages={client.messages || []} />
       )}
