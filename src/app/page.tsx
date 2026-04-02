@@ -58,7 +58,7 @@ export default async function Dashboard() {
   const portfolios = portfolioRecords.map(p => ({ id: p.id, name: p.name }));
 
   // ============================================================================
-  // 🚀 AGENT IDENTITY PROTOCOL
+  // 🚀 AGENT IDENTITY PROTOCOL & DYNAMIC COMMISSION FETCH
   // ============================================================================
   let agentData = null;
 
@@ -72,7 +72,14 @@ export default async function Dashboard() {
           ]
         },
         include: { 
-          loans: { where: { status: 'ACTIVE' }, include: { client: true, installments: { orderBy: { period: 'asc' } } } }, 
+          // 🚀 WE NOW FETCH ALL LOANS & THEIR PAYMENTS TO COMPUTE LIFETIME EARNINGS
+          loans: { 
+            include: { 
+              client: true, 
+              installments: { orderBy: { period: 'asc' } },
+              payments: { where: { status: 'Paid' } } // 🚀 FETCH ONLY PAID TRANSACTIONS
+            } 
+          }, 
           commissions: true 
         }
       });
@@ -80,7 +87,16 @@ export default async function Dashboard() {
 
     if (!agentData) {
       agentData = await prisma.agent.findFirst({
-        include: { loans: { where: { status: 'ACTIVE' }, include: { client: true, installments: { orderBy: { period: 'asc' } } } }, commissions: true }
+        include: { 
+          loans: { 
+            include: { 
+              client: true, 
+              installments: { orderBy: { period: 'asc' } },
+              payments: { where: { status: 'Paid' } }
+            } 
+          }, 
+          commissions: true 
+        }
       });
     }
   }
@@ -98,7 +114,7 @@ export default async function Dashboard() {
   const agentFilter = (!isAdmin && agentData) ? { agentId: agentData.id } : {};
 
   // ============================================================================
-  // 🎯 WIDE-SWEEP RADAR UPGRADE: Now catches PENDING, LATE, MISSED, and PARTIAL
+  // 🎯 WIDE-SWEEP RADAR UPGRADE
   // ============================================================================
   const overdueInstallments = await prisma.loanInstallment.findMany({ 
     where: { 
@@ -143,13 +159,30 @@ export default async function Dashboard() {
   const alerts = { overdue: mapAlerts(overdueInstallments), dueToday: mapAlerts(dueTodayInstallments), upcoming: mapAlerts(upcomingInstallments) };
 
   // ============================================================================
-  // 🚀 DEPLOY THE TACTICAL HUD
+  // 🚀 DEPLOY THE TACTICAL HUD (WITH 60/40 MATH ENGINE)
   // ============================================================================
   if (!isAdmin && agentData) {
     let totalRiskLiability = 0, totalCollected = 0, pendingCommission = 0, totalLifetimeEarnings = 0;
-    agentData.commissions.forEach(comm => { if (!comm.isPaidOut) pendingCommission += Number(comm.amount); totalLifetimeEarnings += Number(comm.amount); });
     
-    const activeClients = agentData.loans.map(loan => {
+    // 🚀 DYNAMIC 60/40 CALCULATOR: 40% of all interest collected by this agent
+    agentData.loans.forEach(loan => {
+      const loanInterestCollected = loan.payments.reduce((sum, p) => sum + Number(p.interestPortion || 0), 0);
+      totalLifetimeEarnings += (loanInterestCollected * 0.40); // 40% goes to the Agent!
+    });
+
+    // Check if the House has officially paid out any of these earnings
+    let totalPaidOutByHouse = 0;
+    agentData.commissions.forEach(comm => { 
+      if (comm.isPaidOut) totalPaidOutByHouse += Number(comm.amount); 
+    });
+
+    // Pending payout is what they earned MINUS what the House already gave them
+    pendingCommission = totalLifetimeEarnings - totalPaidOutByHouse;
+    
+    // We only want to show ACTIVE loans in the client list grid
+    const activeLoans = agentData.loans.filter(loan => loan.status === 'ACTIVE');
+
+    const activeClients = activeLoans.map(loan => {
       const computedTotalPaid = loan.installments?.reduce((sum: number, inst: any) => sum + Number(inst.amountPaid || 0), 0) || 0;
       const safeTotalPaid = Number(loan.totalPaid || computedTotalPaid);
       const safeRemaining = Number(loan.remainingBalance || (Number(loan.totalRepayment || 0) - safeTotalPaid));
@@ -173,7 +206,7 @@ export default async function Dashboard() {
       id: agentData.id, name: agentData.name, phone: agentData.phone, username: agentData.username, createdAt: agentData.createdAt,
       activeClients: activeClients as any, totalRiskLiability, pendingCommission, totalLifetimeEarnings, totalCollected,
       commissionsCount: agentData.commissions.length, overdueCount: activeClients.filter(c => c.status === 'OVERDUE').length,
-      onTrackCount: activeClients.filter(c => c.status === 'ON_TRACK').length, totalActiveLoans: agentData.loans.length
+      onTrackCount: activeClients.filter(c => c.status === 'ON_TRACK').length, totalActiveLoans: activeLoans.length
     };
 
     return <AgentPortalClient agent={processedAgentData} alerts={alerts} portfolios={portfolios} />;
@@ -195,6 +228,7 @@ export default async function Dashboard() {
       case 'CAPITAL_WITHDRAWAL': case 'WITHDRAWAL': return { icon: '📤', title: 'Capital Withdrawn', description: `₱${amount} withdrawn from vault`, color: 'text-amber-400' };
       case 'INTEREST_COLLECTION': return { icon: '📈', title: 'Interest Collected', description: clientName ? `Interest of ₱${amount} from ${clientName}` : `Interest collection: ₱${amount}`, color: 'text-yellow-400' };
       case 'PENALTY': return { icon: '⚠️', title: 'Penalty Applied', description: clientName ? `Penalty of ₱${amount} to ${clientName}` : `Penalty: ₱${amount}`, color: 'text-red-400' };
+      case 'ROLLOVER_FEE': return { icon: '🔄', title: 'Rollover Processed', description: clientName ? `6% Extension Fee: ₱${amount} from ${clientName}` : `Rollover Fee: ₱${amount}`, color: 'text-amber-500' };
       default: return { icon: '📋', title: ledger.transactionType, description: `${ledger.debitAccount} → ${ledger.creditAccount}`, color: 'text-zinc-400' };
     }
   };
@@ -323,7 +357,9 @@ export default async function Dashboard() {
         </div>
       )}
 
+      {/* 🚀 RESTORED TIME TRAVEL DEBUG TOOL */}
       {isAdmin && <TimeTravelDebug />}
     </div>
   );
 }
+
