@@ -64,8 +64,6 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
     try {
       const res = await submitAgentApplication(formData);
       if (res?.error) throw new Error(res.error);
-      
-      // Stop and show the secure download screen
       setIsSubmitted(true);
       setStatus("");
     } catch (error: any) {
@@ -80,7 +78,7 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
   const currentDate = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   // ============================================================================
-  // SUCCESS & PRINT SCREEN (Ensures user can securely save PDF before leaving)
+  // SUCCESS & PRINT SCREEN 
   // ============================================================================
   if (isSubmitted) {
     return (
@@ -129,12 +127,12 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
             <div className="col-span-2">{formData.collateralCondition || '—'}</div>
           </div>
 
-          {/* 🚀 FIXED: Black background to make the white signature ink perfectly visible */}
+          {/* 🚀 FIXED: Inverting the white ink to black so it prints natively on white paper without relying on background colors! */}
           {formData.digitalSignature && (
             <div className="mt-4 pt-2 border-t border-black print:break-inside-avoid">
               <h2 className="font-bold text-lg mb-2 uppercase">Digital Signature</h2>
-              <div className="p-2 inline-block bg-black rounded">
-                <img src={formData.digitalSignature} alt="Digital Signature" style={{ maxHeight: '80px' }} />
+              <div className="border border-gray-400 p-2 inline-block">
+                <img src={formData.digitalSignature} alt="Digital Signature" style={{ maxHeight: '80px', filter: 'invert(1) contrast(200%)' }} />
               </div>
             </div>
           )}
@@ -176,7 +174,6 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
           <span className="bg-purple-900/30 text-purple-400 border border-purple-500/30 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest inline-block mb-3">
             DIVISION: {defaultPortfolio}
           </span>
-          <p className="text-gray-500 text-xs tracking-widest font-bold">EARN 40% COMMISSION • FLEXIBLE HOURS</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-7">
@@ -232,7 +229,6 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
 
           <div>
             <h2 className="text-purple-400 font-bold text-lg mb-1 uppercase tracking-wider">4. Collateral Declaration</h2>
-            <p className="text-xs text-zinc-400 mb-3 leading-relaxed">Provide details of the asset you are pledging as a guarantee against client default.</p>
             <div className={`${borderStyle} p-4 space-y-4`}>
               <div>
                 <label className="text-xs text-zinc-400 font-bold uppercase tracking-widest block mb-1">Asset Type</label>
@@ -241,7 +237,6 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
                   <option value="Electronics">Electronics (Laptop, Phone, Tablet)</option>
                   <option value="Vehicle">Vehicle (Motorcycle, Car)</option>
                   <option value="Real Estate">Real Estate / Land</option>
-                  <option value="Jewelry">Jewelry / Watches</option>
                   <option value="Other">Other Valuable Asset</option>
                 </select>
               </div>
@@ -267,7 +262,7 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
                     <div key={item.field} className="bg-[#1c1c21] border border-[#2a2a35] rounded-lg p-3 text-center flex flex-col justify-center items-center">
                       <label className="block text-gray-400 text-[10px] mb-2 font-bold uppercase tracking-widest w-full cursor-pointer">
                         {item.label}
-                        <input required name={item.field} type="file" accept="image/*" className="w-full text-[10px] text-gray-500 mt-2" onChange={e => handleImage(e, item.field)} />
+                        <input name={item.field} type="file" accept="image/*" className="w-full text-[10px] text-gray-500 mt-2" onChange={e => handleImage(e, item.field)} />
                       </label>
                     </div>
                   ))}
@@ -279,16 +274,6 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
           <div>
             <h2 className="text-red-400 font-bold text-lg mb-3 uppercase tracking-wider">5. Binding Agreement & Signature</h2>
             <div className={`${borderStyle} p-4 space-y-4`}>
-              <div className="border border-zinc-700 p-4 text-sm text-zinc-300">
-                <h3 className="font-bold text-white mb-2 uppercase">Agent Commission & Remittance Agreement</h3>
-                <ol className="list-decimal pl-5 space-y-2">
-                  <li><strong>Hatian ng Komisyon (40/60 Rule):</strong> Ang Ahente ay tatanggap ng 40% na komisyon mula lamang sa TUBONG (Interest) nakolekta.</li>
-                  <li><strong>Agarang Remittance:</strong> Obligasyon ng Ahente na i-remit ang nakolektang Principal at 60% Vault Interest sa parehong araw ng pangingilekta.</li>
-                  <li><strong>Responsibilidad sa Kliyente:</strong> Ang Ahente ang pangunahing tagapaningil ng kanyang mga nirekomendang kliyente.</li>
-                  <li><strong>Legal na Aksyon (Estafa):</strong> Ang anumang hindi awtorisadong paggamit o pagtatago ng nakolektang pera ng Vault ay ituturing na pagnanakaw.</li>
-                </ol>
-              </div>
-
               <div>
                 <label className="block text-zinc-400 text-xs mb-2 uppercase tracking-widest">Digital Signature (Sign Below)</label>
                 <SignaturePad onSignature={(dataUrl) => setFormData(prev => ({...prev, digitalSignature: dataUrl}))} />
@@ -296,7 +281,7 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
               <div className="flex items-start gap-3 text-xs text-zinc-500">
                 <input type="checkbox" required className="w-5 h-5 accent-emerald-500 mt-0.5" />
                 <span className="break-words leading-relaxed text-zinc-300">
-                  <strong className="text-white">I acknowledge that I am applying as a Co-Maker.</strong> If any client assigned to me defaults on their loan, I agree that the unpaid balance will be legally charged to me, and my pledged collateral listed above may be seized.
+                  <strong className="text-white">I acknowledge that I am applying as a Co-Maker.</strong> If any client assigned to me defaults, I agree that the unpaid balance will be legally charged to me, and my pledged collateral listed above may be seized.
                 </span>
               </div>
             </div>
@@ -310,3 +295,4 @@ export default function AgentApplyClient({ defaultPortfolio }: { defaultPortfoli
     </div>
   );
 }
+
