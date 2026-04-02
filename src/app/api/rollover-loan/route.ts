@@ -13,73 +13,46 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { loanId } = body;
 
-    if (!loanId) {
-      return NextResponse.json({ success: false, error: "Missing loan ID" }, { status: 400 });
-    }
+    if (!loanId) return NextResponse.json({ success: false, error: "Missing loan ID" }, { status: 400 });
 
-    // 1. Find the loan and its unpaid installments
     const loan = await prisma.loan.findFirst({
       where: { id: loanId, portfolio },
-      include: { 
-        installments: { 
-          where: { status: { in: ['PENDING', 'LATE', 'MISSED', 'PARTIAL'] } } 
-        } 
-      }
+      include: { installments: { where: { status: { in: ['PENDING', 'LATE', 'MISSED', 'PARTIAL'] } } } }
     });
 
-    if (!loan) {
-      return NextResponse.json({ success: false, error: "Loan not found" }, { status: 404 });
-    }
+    if (!loan) return NextResponse.json({ success: false, error: "Loan not found" }, { status: 404 });
 
-    // 2. Compute the 6% Rollover Fee
     const extensionFee = Number(loan.principal) * 0.06;
 
-    // 3. Record the 6% Fee as Pure Profit in the Ledger
     await prisma.ledger.create({
-      data: {
-        transactionType: "ROLLOVER_FEE",
-        amount: extensionFee,
-        debitAccount: "Cash", 
-        creditAccount: "Fee Income",
-        loanId: loan.id,
-        portfolio
-      }
+      data: { transactionType: "ROLLOVER_FEE", amount: extensionFee, debitAccount: "Cash", creditAccount: "Fee Income", loanId: loan.id, portfolio }
     });
 
-    // Log the Rollover in the immutable Audit Ledger
     if (isAdmin) {
       await prisma.auditLog.create({
-        data: {
-          type: 'PENALTY',
-          amount: extensionFee,
-          referenceId: loan.id,
-          referenceType: 'LOAN',
-          description: `6% Rollover Extension Fee processed. Dates shifted.`,
-          portfolio
-        }
+        data: { type: 'PENALTY', amount: extensionFee, referenceId: loan.id, referenceType: 'LOAN', description: `6% Rollover Extension Fee processed.`, portfolio }
       });
     }
 
-    // 4. Shift the due dates of all remaining installments forward
     for (const inst of loan.installments) {
       const newDueDate = new Date(inst.dueDate);
-      
-      if (loan.termType === "Days") {
-        newDueDate.setDate(newDueDate.getDate() + loan.termDuration);
-      } else if (loan.termType === "Weeks") {
-        newDueDate.setDate(newDueDate.getDate() + (loan.termDuration * 7));
-      } else {
-        newDueDate.setMonth(newDueDate.getMonth() + loan.termDuration);
-      }
+      if (loan.termType === "Days") newDueDate.setDate(newDueDate.getDate() + loan.termDuration);
+      else if (loan.termType === "Weeks") newDueDate.setDate(newDueDate.getDate() + (loan.termDuration * 7));
+      else newDueDate.setMonth(newDueDate.getMonth() + loan.termDuration);
 
       await prisma.loanInstallment.update({
-        where: { id: inst.id },
-        data: {
-          dueDate: newDueDate,
-          status: "PENDING" // Reset to pending since they bought an extension
-        }
+        where: { id: inst.id }, data: { dueDate: newDueDate, status: "PENDING" }
       });
     }
+
+    // 🚀 INJECT: SYSTEM BOT SENDS MESSAGE TO COMM-LINK
+    await prisma.message.create({
+      data: {
+        clientId: loan.clientId,
+        sender: "VAULT SYSTEM",
+        text: `🔄 EXTENSION GRANTED: A Rollover has been processed for TXN-${loan.id.toString().padStart(4, '0')}. A 6% Extension Fee of ₱${extensionFee.toLocaleString('en-US', {minimumFractionDigits: 2})} has been applied. Your remaining due dates have been shifted forward.`
+      }
+    });
 
     return NextResponse.json({ success: true, extensionFee });
 
@@ -88,4 +61,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
-
