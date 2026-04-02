@@ -5,18 +5,19 @@ import { createPortal } from "react-dom";
 
 export default function ApplyLinksTrigger({ portfolios = [] }: { portfolios: any[] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | number | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const handleCopy = (id: string | number, isAgentLink: boolean = false) => {
-    // Determine which link to generate based on what was clicked
+  const handleCopy = (portfolioName: string, isAgentLink: boolean = false) => {
+    // 🚀 INJECT THE PORTFOLIO DIRECTLY INTO THE URL
+    const encodedPortfolio = encodeURIComponent(portfolioName);
     const link = isAgentLink 
-      ? `${window.location.origin}/agent-application` 
-      : `${window.location.origin}/apply?portfolioId=${id}`;
+      ? `${window.location.origin}/agent-apply?portfolio=${encodedPortfolio}` 
+      : `${window.location.origin}/apply?portfolio=${encodedPortfolio}`;
     
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(link);
@@ -36,60 +37,46 @@ export default function ApplyLinksTrigger({ portfolios = [] }: { portfolios: any
         }
     }
     
-    setCopiedId(id);
+    const uniqueId = `${portfolioName}-${isAgentLink ? 'agent' : 'client'}`;
+    setCopiedId(uniqueId);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
   const modalContent = (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-      <div style={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '400px', zIndex: 1000000, color: 'white' }}>
+      <div style={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '450px', zIndex: 1000000, color: 'white' }}>
         <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#60a5fa', textTransform: 'uppercase', marginBottom: '16px' }}>Master Application Links</h2>
         
         <div style={{ maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           
-          {/* 🚨 NEW: AGENT RECRUITMENT LINK (Distinct Purple Styling) */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#3b0764', border: '1px solid #7e22ce', padding: '16px', borderRadius: '8px' }}>
-            <span style={{ fontWeight: 'bold', color: '#d8b4fe' }}>⭐ Agent Recruitment</span>
-            <button
-              onClick={() => handleCopy('agent', true)}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                border: 'none',
-                backgroundColor: copiedId === 'agent' ? '#059669' : '#9333ea',
-                color: 'white'
-              }}
-            >
-              {copiedId === 'agent' ? '✓ Copied' : 'Copy Link'}
-            </button>
-          </div>
-
-          <hr style={{ borderColor: '#3f3f46', margin: '4px 0' }} />
-          <h3 style={{ fontSize: '12px', color: '#a1a1aa', textTransform: 'uppercase', fontWeight: 'bold' }}>Client Portfolios</h3>
-
-          {/* STANDARD PORTFOLIO LINKS */}
           {portfolios && portfolios.length > 0 ? (
             portfolios.map((p) => (
-              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#27272a', border: '1px solid #3f3f46', padding: '16px', borderRadius: '8px' }}>
-                <span style={{ fontWeight: 'bold' }}>{p.name}</span>
-                <button
-                  onClick={() => handleCopy(p.id)}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    border: 'none',
-                    backgroundColor: copiedId === p.id ? '#059669' : '#2563eb',
-                    color: 'white'
-                  }}
-                >
-                  {copiedId === p.id ? '✓ Copied' : 'Copy Link'}
-                </button>
+              <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: '#27272a', border: '1px solid #3f3f46', padding: '16px', borderRadius: '8px' }}>
+                <span style={{ fontWeight: 'bold', color: '#facc15', textTransform: 'uppercase', fontSize: '12px', letterSpacing: '0.05em' }}>{p.name}</span>
+                
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {/* CLIENT LINK */}
+                  <button
+                    onClick={() => handleCopy(p.name, false)}
+                    style={{
+                      flex: 1, padding: '8px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', border: 'none',
+                      backgroundColor: copiedId === `${p.name}-client` ? '#059669' : '#2563eb', color: 'white'
+                    }}
+                  >
+                    {copiedId === `${p.name}-client` ? '✓ Copied' : '👥 Client Link'}
+                  </button>
+
+                  {/* AGENT LINK */}
+                  <button
+                    onClick={() => handleCopy(p.name, true)}
+                    style={{
+                      flex: 1, padding: '8px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', border: 'none',
+                      backgroundColor: copiedId === `${p.name}-agent` ? '#059669' : '#9333ea', color: 'white'
+                    }}
+                  >
+                    {copiedId === `${p.name}-agent` ? '✓ Copied' : '⭐ Agent Link'}
+                  </button>
+                </div>
               </div>
             ))
           ) : (
