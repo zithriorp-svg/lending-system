@@ -56,6 +56,7 @@ model Client {
   applicationId    Int?        @unique // Link to original application
   application      Application? @relation(fields: [applicationId], references: [id])
   loans            Loan[]
+  messages         Message[]   // 🚀 NEW: Link to 3-way chat messages
 
   @@index([portfolio])
 }
@@ -329,4 +330,20 @@ model AgentApplication {
 
   @@index([portfolio])
   @@index([status])
+}
+
+// ==========================================
+// 3-WAY COMMUNICATION HUB
+// ==========================================
+model Message {
+  id        Int      @id @default(autoincrement())
+  clientId  Int      // The client this chat belongs to
+  sender    String   // Identifies who sent it: "CLIENT", "AGENT", or "ADMIN"
+  text      String   // The actual message
+  createdAt DateTime @default(now())
+  
+  client    Client   @relation(fields: [clientId], references: [id])
+
+  @@index([clientId])
+  @@index([createdAt])
 }
