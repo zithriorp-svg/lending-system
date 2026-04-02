@@ -147,6 +147,15 @@ export async function processSplitPaymentAction(
       });
     }
 
+    // 🚀 INJECT: SYSTEM BOT DROPS OFFICIAL RECEIPT IN COMM-LINK
+    await prisma.message.create({
+      data: {
+        clientId: loan.clientId,
+        sender: "VAULT SYSTEM",
+        text: `🧾 OFFICIAL RECEIPT (RCP-${payment.id.toString().padStart(6, '0')}): A ${paymentType} payment of ₱${amount.toLocaleString('en-US', {minimumFractionDigits: 2})} has been successfully posted to TXN-${loan.id.toString().padStart(4, '0')}. Remaining Loan Balance: ₱${remainingBalance.toLocaleString('en-US', {minimumFractionDigits: 2})}.`
+      }
+    });
+
     const updatedPayments = await prisma.payment.findMany({
       where: { loanId: loan.id, status: "Paid" }
     });
@@ -277,6 +286,15 @@ export async function processPaymentAction(
       })
     ]);
 
+    // 🚀 INJECT: SYSTEM BOT DROPS OFFICIAL RECEIPT IN COMM-LINK
+    await prisma.message.create({
+      data: {
+        clientId: loan.clientId,
+        sender: "VAULT SYSTEM",
+        text: `🧾 OFFICIAL RECEIPT (RCP-${payment.id.toString().padStart(6, '0')}): A FULL payment of ₱${amount.toLocaleString('en-US', {minimumFractionDigits: 2})} has been successfully posted to TXN-${loan.id.toString().padStart(4, '0')}. Remaining Loan Balance: ₱${currentRemaining.toLocaleString('en-US', {minimumFractionDigits: 2})}.`
+      }
+    });
+
     const allPayments = await prisma.payment.findMany({
       where: { loanId, status: "Paid" }
     });
@@ -285,6 +303,7 @@ export async function processPaymentAction(
     revalidatePath("/");
     revalidatePath("/payments");
     revalidatePath("/accounting");
+    revalidatePath(`/clients/${loan.clientId}`);
     revalidatePath("/agent-portal");
 
     return {
@@ -480,3 +499,4 @@ export async function getDelinquencyAlerts() {
     return { dueSoon: [], overdue: [] };
   }
 }
+
