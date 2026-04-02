@@ -8,7 +8,7 @@ import SignaturePad from "@/components/SignaturePad";
 interface Agent {
   id: number;
   name: string;
-  portfolio?: string | null; // 🚀 Ensures the form knows agents have a portfolio tag
+  portfolio?: string | null;
 }
 
 interface Portfolio {
@@ -36,7 +36,6 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
   const targetPortfolioId = targetPortfolio?.id || null;
   const targetPortfolioName = targetPortfolio?.name || "Main Portfolio";
   
-  // 🚀 BULLETPROOF FILTER: Forces the dropdown to ONLY show agents from the matching division.
   const availableAgents = agents.filter(agent => {
     const agentPort = agent.portfolio || "Main Portfolio";
     return agentPort.toLowerCase() === targetPortfolioName.toLowerCase();
@@ -275,8 +274,21 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
             <div className="bg-transparent text-black text-sm mb-6 whitespace-normal">
               <h3 className="font-bold text-black text-base mb-3 border-b border-black pb-2">MGA TUNTUNIN AT KUNDISYON (Terms and Conditions)</h3>
               <ol className="list-decimal pl-5 space-y-2 break-words">
-                <li className="break-words text-black">Ang NANGUTANG ay sumasang-ayon na bayaran ang kabuuang halaga ng utang kasama ang interes sa petsang nakasaad sa iskedul ng pagbabayad.</li>
-                <li className="break-words text-black">Ang hindi pagbabayad sa tamang petsa ay magreresulta sa pagdagdag ng <strong className="text-black">5% penalty fee</strong> bawat buwan na hindi nababayaran.</li>
+                {/* 🚀 RESTORED PRINT VERSION T&C */}
+                <li className="break-words text-black">
+                  <strong>INTERES AT GOOD PAYER DISCOUNT:</strong> Ang opisyal na flat-rate interest ng utang na ito ay <strong>10%</strong>. PERO, kung ang NANGUTANG ay magbabayad ng tama sa oras sa lahat ng kanyang iskedul, siya ay bibigyan ng <strong>4% Good Payer Discount</strong> (kaya magiging 6% na lamang ang epektibong interes).
+                  <br/>
+                  <span className="text-gray-600 text-xs italic mt-1 block">
+                    (Simpleng paliwanag: Kung palagi kang on-time, 6% lang ang tubo ng utang mo. Pero kapag na-late ka kahit isang araw sa iyong hulog, ma-vo-void ang discount at sisingilin ka ng buong 10% interes para sa buong kontrata.)
+                  </span>
+                </li>
+                <li className="break-words text-black">
+                  <strong>LOAN EXTENSION (ROLLOVER):</strong> Kung sakaling matapos ang kontrata at hindi pa kayang bayaran ng buo ang utang, ang NANGUTANG ay maaaring humingi ng palugit (Rollover). Upang ma-extend ang utang, kailangang magbayad ng <strong>Extension Fee</strong> na katumbas ng 6% ng orihinal na Principal.
+                  <br/>
+                  <span className="text-gray-600 text-xs italic mt-1 block">
+                    (Simpleng paliwanag: Kung ₱20,000 ang utang mo at hindi mo mabayaran sa due date, kailangan mong magbayad ng ₱1,200 Extension Fee para mabigyan ka ng panibagong palugit. Ang ₱1,200 na ito ay fee lamang at HINDI ibabawas sa utang mong ₱20,000.)
+                  </span>
+                </li>
                 <li className="break-words text-black">Ang nag PAUTANG ay may karapatang mangolekta o maningil ng utang sa pamamagitan ng mga lehitimong paraan tulad ng pagbisita sa bahay, pagtawag, o pagsulat ng liham.</li>
                 <li className="break-words text-black">Ang mga impormasyong ibinigay ng NANGUTANG ay totoo at tama. Ang anumang maling impormasyon ay maaaring maging dahilan ng agarang pagbabayad ng buong halaga.</li>
                 <li className="break-words text-black">Ang kasunduang ito ay sumasailalim sa batas ng Republika ng Pilipinas.</li>
@@ -341,7 +353,6 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
                 <label className="text-xs text-zinc-400 block mb-1">Assigned Agent / Co-Maker (Optional)</label>
                 <select name="agentId" value={agentId} onChange={(e) => setAgentId(e.target.value)} className="w-full bg-black border border-zinc-800 rounded p-2 text-white text-sm">
                   <option value="">No Agent Assigned</option>
-                  {/* 🚀 ONLY THE AGENTS FOR THIS PORTFOLIO WILL APPEAR HERE NOW! */}
                   {availableAgents.map((agent) => (
                     <option key={agent.id} value={agent.id}>{agent.name}</option>
                   ))}
@@ -520,8 +531,35 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
           <div>
             <h2 className="text-red-400 font-bold text-lg mb-3 uppercase tracking-wider">5. Legal Compliance & Consent</h2>
             <div className={`${borderStyle} p-4 space-y-4`}>
+              
+              {/* 🚀 RESTORED SCREEN VERSION T&C */}
+              <div className="bg-zinc-900 border border-zinc-700 rounded-md p-4 text-sm text-zinc-300 shadow-inner">
+                <h3 className="font-bold text-white text-base mb-3 border-b border-zinc-700 pb-2">MGA TUNTUNIN AT KUNDISYON (Terms and Conditions)</h3>
+                <ol className="list-decimal pl-5 space-y-2 break-words">
+                  <li className="break-words">
+                    <strong>INTERES AT GOOD PAYER DISCOUNT:</strong> Ang opisyal na flat-rate interest ng utang na ito ay <strong className="text-amber-400">10%</strong>. PERO, kung ang NANGUTANG ay magbabayad ng tama sa oras sa lahat ng kanyang iskedul, siya ay bibigyan ng <strong className="text-emerald-400">4% Good Payer Discount</strong> (kaya magiging 6% na lamang ang epektibong interes). 
+                    <br/>
+                    <span className="text-zinc-400 text-[11px] italic mt-1 block">
+                      (Simpleng paliwanag: Kung palagi kang on-time, 6% lang ang tubo ng utang mo. Pero kapag na-late ka kahit isang araw sa iyong hulog, ma-vo-void ang discount at sisingilin ka ng buong 10% interes para sa buong kontrata.)
+                    </span>
+                  </li>
+                  <li className="break-words">
+                    <strong>LOAN EXTENSION (ROLLOVER):</strong> Kung sakaling matapos ang kontrata at hindi pa kayang bayaran ng buo ang utang, ang NANGUTANG ay maaaring humingi ng palugit (Rollover). Upang ma-extend ang utang, kailangang magbayad ng <strong className="text-amber-400">Extension Fee</strong> na katumbas ng 6% ng orihinal na Principal.
+                    <br/>
+                    <span className="text-zinc-400 text-[11px] italic mt-1 block">
+                      (Simpleng paliwanag: Kung ₱20,000 ang utang mo at hindi mo mabayaran sa due date, kailangan mong magbayad ng ₱1,200 Extension Fee para mabigyan ka ng panibagong palugit. Ang ₱1,200 na ito ay fee lamang at HINDI ibabawas sa utang mong ₱20,000.)
+                    </span>
+                  </li>
+                  <li className="break-words">Ang nag PAUTANG ay may karapatang mangolekta o maningil ng utang sa pamamagitan ng mga lehitimong paraan tulad ng pagbisita sa bahay, pagtawag, o pagsulat ng liham.</li>
+                  <li className="break-words">Ang mga impormasyong ibinigay ng NANGUTANG ay totoo at tama. Ang anumang maling impormasyon ay maaaring maging dahilan ng agarang pagbabayad ng buong halaga.</li>
+                  <li className="break-words">Ang kasunduang ito ay sumasailalim sa batas ng Republika ng Pilipinas.</li>
+                  <li className="break-words">Sa kaso ng hindi pagbabayad, ang NANGUTANG ay sumasang-ayon na maaaring isama ang kanyang pangalan sa lista ng mga delinquent borrowers.</li>
+                  <li className="break-words">Ang pagpirma sa kasunduang ito ay patunay na ang NANGUTANG ay nagkasundo at sumasang-ayon sa lahat ng tuntunin at kundisyon.</li>
+                </ol>
+              </div>
+
               <div>
-                <label className="block text-zinc-400 text-xs mb-2 uppercase tracking-widest">Digital Signature (Sign Below)</label>
+                <label className="block text-zinc-400 text-xs mb-2 uppercase tracking-widest mt-4">Digital Signature (Sign Below)</label>
                 <SignaturePad onSignature={(dataUrl) => setFormData(prev => ({...prev, digitalSignature: dataUrl}))} />
               </div>
               <div className="flex items-start gap-3 text-xs text-zinc-500">
