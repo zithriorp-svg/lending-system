@@ -5,9 +5,9 @@ import ApplyFormClient from "./ApplyFormClient";
 export const dynamic = "force-dynamic";
 
 export default async function ApplyPage() {
-  // Fetch all registered agents from the database
+  // 🚀 FIXED: We are now explicitly fetching the 'portfolio' tag for every agent
   const agents = await prisma.agent.findMany({
-    select: { id: true, name: true },
+    select: { id: true, name: true, portfolio: true },
     orderBy: { name: 'asc' }
   });
 
