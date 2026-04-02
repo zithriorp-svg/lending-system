@@ -112,20 +112,18 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
     locationLat: "", locationLng: "", locationUrl: "",
     selfieUrl: "", idPhotoUrl: "",
     payslipPhotoUrl: "", electricBillPhotoUrl: "", waterBillPhotoUrl: "",
-    collateralUrl: "",
-    // Collateral (Palit-Sigurado) text fields
-    collateralName: "",
-    collateralDescription: "",
-    collateralDefects: "",
-    // AI Appraisal Fields
-    collateralValue: "",
-    collateralAge: "",
-    collateralCondition: "Good",
+    
+    // 🚀 NEW COLLATERAL FIELDS
+    collateralType: "", collateralValue: "", collateralCondition: "",
+    collateralPhotoFront: "", collateralPhotoRear: "", collateralPhotoLeft: "",
+    collateralPhotoRight: "", collateralPhotoSerial: "", collateralPhotoDocument: "",
+    
     digitalSignature: ""
   });
 
   const [status, setStatus] = useState("");
   const [locStatus, setLocStatus] = useState("Locating...");
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   useEffect(() => {
     const geoOptions = { timeout: 3000, maximumAge: 10000, enableHighAccuracy: false };
@@ -181,9 +179,6 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     
-    // TRIGGER PRINT DIALOG FIRST - User receives legal receipt before server processes
-    window.print();
-    
     setStatus("UPLOADING FORENSIC DOSSIER...");
     try {
       // Include targetPortfolioId and loan configuration in the form data
@@ -202,8 +197,8 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
         agentId: agentId ? parseInt(agentId) : null
       });
       if (res?.error) throw new Error(res.error);
-      alert("Application Received! Our AI is performing a forensic review.");
-      window.location.href = "/";
+      setIsSubmitted(true);
+      setStatus("");
     } catch (error: any) {
       alert("Matrix Error: " + error.message);
       setStatus("");
@@ -223,8 +218,176 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
     minute: '2-digit'
   });
 
+  // ============================================================================
+  // SUCCESS & PRINT SCREEN (Ensures user can securely save PDF before leaving)
+  // ============================================================================
+  if (isSubmitted) {
+    return (
+      <div className="min-h-screen bg-[#09090b] text-center p-8 flex flex-col items-center justify-center print:bg-white print:p-0">
+        <div className="print:hidden w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-2xl">
+          <div className="w-20 h-20 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-4">✓</div>
+          <h1 className="text-2xl font-bold text-white mb-2">Application Received!</h1>
+          <p className="text-zinc-400 text-sm mb-8">Your dossier has been securely transmitted. Please save a copy of your contract receipt now.</p>
+          
+          <button onClick={() => window.print()} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl mb-4 transition-all shadow-lg flex items-center justify-center gap-2">
+            📄 SAVE PDF RECEIPT
+          </button>
+          
+          <button onClick={() => window.location.href = '/'} className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-4 rounded-xl transition-all">
+            Return to Home
+          </button>
+        </div>
+
+        {/* PRINT ONLY LAYOUT */}
+        <div className="hidden print:block text-black w-full text-left font-sans">
+          <div className="border-b-2 border-black pb-4 mb-4 text-center">
+            <h1 className="text-2xl font-bold">LOAN APPLICATION RECEIPT</h1>
+            <p className="text-sm text-gray-600">Official Document • {currentDate}</p>
+            <p className="text-xs text-gray-500 mt-1">Portfolio: {targetPortfolioName}</p>
+          </div>
+
+          <h2 className="font-bold text-lg border-b border-black pb-2 mb-4">BORROWER INFORMATION</h2>
+          
+          <div className="grid grid-cols-2 gap-y-2 text-sm mb-6 break-inside-avoid">
+            <div className="font-semibold">Full Name:</div>
+            <div>{formData.firstName} {formData.lastName}</div>
+            
+            <div className="font-semibold">Phone:</div>
+            <div>{formData.phone || '—'}</div>
+            
+            <div className="font-semibold">Address:</div>
+            <div>{formData.address || '—'}</div>
+            
+            <div className="font-semibold">Birth Date:</div>
+            <div>{formData.birthDate || '—'}</div>
+            
+            <div className="font-semibold">Age:</div>
+            <div>{formData.age || '—'}</div>
+          </div>
+
+          <h2 className="font-bold text-lg border-b border-black pb-2 mb-4">FINANCIAL INFORMATION</h2>
+          
+          <div className="grid grid-cols-2 gap-y-2 text-sm mb-6 break-inside-avoid">
+            <div className="font-semibold">Employment/Business:</div>
+            <div>{formData.employment || '—'}</div>
+            
+            <div className="font-semibold">Gross Income:</div>
+            <div>₱{formData.income || '—'}</div>
+            
+            <div className="font-semibold">Existing Loans:</div>
+            <div>{formData.existingLoansDetails || 'None declared'}</div>
+            
+            <div className="font-semibold">Monthly Debt Payment:</div>
+            <div>₱{formData.monthlyDebtPayment || '0'}</div>
+            
+            <div className="font-semibold">Family Size:</div>
+            <div>{formData.familySize}</div>
+            
+            <div className="font-semibold">Working Members:</div>
+            <div>{formData.workingMembers}</div>
+            
+            <div className="font-semibold">Housing Status:</div>
+            <div>{formData.housingStatus}</div>
+            
+            <div className="font-semibold">Monthly Bills:</div>
+            <div>₱{formData.monthlyBills || '—'}</div>
+          </div>
+
+          <h2 className="font-bold text-lg border-b border-black pb-2 mb-4">REFERENCE</h2>
+          
+          <div className="grid grid-cols-2 gap-y-2 text-sm mb-6 break-inside-avoid">
+            <div className="font-semibold">Reference Name:</div>
+            <div>{formData.referenceName || '—'}</div>
+            
+            <div className="font-semibold">Reference Phone:</div>
+            <div>{formData.referencePhone || '—'}</div>
+          </div>
+
+          <h2 className="font-bold text-lg border-b border-black pb-1 mb-2 uppercase">Pledged Collateral Declaration</h2>
+          <div className="grid grid-cols-2 gap-y-1 text-sm mb-4">
+            <div className="font-semibold">Asset Type:</div><div>{formData.collateralType || '—'}</div>
+            <div className="font-semibold">Market Value:</div><div>₱{formData.collateralValue || '—'}</div>
+            <div className="font-semibold col-span-2 mt-1">Specifications & Condition:</div>
+            <div className="col-span-2">{formData.collateralCondition || '—'}</div>
+          </div>
+
+          {/* ===== PRINT-ONLY: LEGAL COMPLIANCE & CONSENT ===== */}
+          <div className="print:block print:w-full print:h-auto print:overflow-visible whitespace-normal">
+            <h2 className="font-bold text-lg border-b border-black pb-2 mb-4 mt-6">LEGAL COMPLIANCE & CONSENT</h2>
+            
+            {/* DATA PRIVACY & CONSENT WAIVER - Allow natural page breaks */}
+            <div className="bg-transparent text-black text-xs leading-relaxed mb-6 whitespace-normal">
+              <p className="font-bold text-black mb-2 uppercase tracking-wider">DATA PRIVACY & CONSENT WAIVER</p>
+              <p className="mb-2 break-words text-black">
+                By signing below, I hereby authorize the lending institution to collect, process, and store my personal and financial information for the purpose of evaluating my loan application.
+              </p>
+              <p className="mb-2 break-words text-black">
+                I understand that my data may be shared with third-party verification services and credit bureaus for authentication and risk assessment purposes.
+              </p>
+              <p className="mb-2 break-words text-black">
+                I certify that all information provided in this application is true and accurate to the best of my knowledge. I acknowledge that any false statement may result in immediate rejection of my application and potential legal action.
+              </p>
+              <p className="break-words text-black">
+                I agree to the terms and conditions of the loan agreement, including but not limited to: interest rates, repayment schedules, and penalties for late or non-payment.
+              </p>
+            </div>
+
+            {/* MGA TUNTUNIN AT KUNDISYON - Allow natural page breaks */}
+            <div className="bg-transparent text-black text-sm mb-6 whitespace-normal">
+              <h3 className="font-bold text-black text-base mb-3 border-b border-black pb-2">MGA TUNTUNIN AT KUNDISYON (Terms and Conditions)</h3>
+              <ol className="list-decimal pl-5 space-y-2 break-words">
+                <li className="break-words text-black">Ang NANGUTANG ay sumasang-ayon na bayaran ang kabuuang halaga ng utang kasama ang interes sa petsang nakasaad sa iskedul ng pagbabayad.</li>
+                <li className="break-words text-black">Ang hindi pagbabayad sa tamang petsa ay magreresulta sa pagdagdag ng <strong className="text-black">5% penalty fee</strong> bawat buwan na hindi nababayaran.</li>
+                <li className="break-words text-black">Ang nag PAUTANG ay may karapatang mangolekta o maningil ng utang sa pamamagitan ng mga lehitimong paraan tulad ng pagbisita sa bahay, pagtawag, o pagsulat ng liham.</li>
+                <li className="break-words text-black">Ang mga impormasyong ibinigay ng NANGUTANG ay totoo at tama. Ang anumang maling impormasyon ay maaaring maging dahilan ng agarang pagbabayad ng buong halaga.</li>
+                <li className="break-words text-black">Ang kasunduang ito ay sumasailalim sa batas ng Republika ng Pilipinas.</li>
+                <li className="break-words text-black">Sa kaso ng hindi pagbabayad, ang NANGUTANG ay sumasang-ayon na maaaring isama ang kanyang pangalan sa lista ng mga delinquent borrowers.</li>
+                <li className="break-words text-black">Ang pagpirma sa kasunduang ito ay patunay na ang NANGUTANG ay nagkasundo at sumasang-ayon sa lahat ng tuntunin at kundisyon.</li>
+              </ol>
+            </div>
+          </div>
+
+          {/* 🚀 FIXED: Black background to make the white signature ink perfectly visible */}
+          {formData.digitalSignature && (
+            <div className="mt-4 pt-2 border-t border-black print:break-inside-avoid">
+              <h2 className="font-bold text-lg mb-2 uppercase">Digital Signature</h2>
+              <div className="border border-gray-400 p-2 inline-block">
+                <img src={formData.digitalSignature} alt="Digital Signature" style={{ maxHeight: '80px', filter: 'invert(1) contrast(200%)' }} />
+              </div>
+            </div>
+          )}
+
+          {/* PAGE 2: PHOTO GRID */}
+          <div style={{ pageBreakBefore: 'always' }} className="pt-8">
+            <h2 className="text-2xl font-bold text-black mb-1 text-center">APPENDIX A: FORENSIC & COLLATERAL EVIDENCE</h2>
+            <p className="text-sm text-gray-600 text-center mb-4 border-b-2 border-black pb-4">Applicant: {formData.firstName} {formData.lastName}</p>
+
+            <h3 className="font-bold text-lg mb-2 uppercase bg-gray-200 p-2">Identity Verification</h3>
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {formData.selfieUrl && <div className="border border-gray-300 p-2" style={{ pageBreakInside: 'avoid' }}><p className="font-bold text-xs mb-1 text-center">LIVE SELFIE</p><img src={formData.selfieUrl} className="w-full h-40 object-contain" /></div>}
+              {formData.idPhotoUrl && <div className="border border-gray-300 p-2" style={{ pageBreakInside: 'avoid' }}><p className="font-bold text-xs mb-1 text-center">GOVERNMENT ID</p><img src={formData.idPhotoUrl} className="w-full h-40 object-contain" /></div>}
+            </div>
+
+            <h3 className="font-bold text-lg mb-2 uppercase bg-gray-200 p-2">6-Point Collateral Inspection</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {formData.collateralPhotoFront && <div className="border border-gray-300 p-2" style={{ pageBreakInside: 'avoid' }}><p className="font-bold text-xs mb-1 text-center">FRONT VIEW</p><img src={formData.collateralPhotoFront} className="w-full h-40 object-contain" /></div>}
+              {formData.collateralPhotoRear && <div className="border border-gray-300 p-2" style={{ pageBreakInside: 'avoid' }}><p className="font-bold text-xs mb-1 text-center">REAR VIEW</p><img src={formData.collateralPhotoRear} className="w-full h-40 object-contain" /></div>}
+              {formData.collateralPhotoLeft && <div className="border border-gray-300 p-2" style={{ pageBreakInside: 'avoid' }}><p className="font-bold text-xs mb-1 text-center">LEFT VIEW</p><img src={formData.collateralPhotoLeft} className="w-full h-40 object-contain" /></div>}
+              {formData.collateralPhotoRight && <div className="border border-gray-300 p-2" style={{ pageBreakInside: 'avoid' }}><p className="font-bold text-xs mb-1 text-center">RIGHT VIEW</p><img src={formData.collateralPhotoRight} className="w-full h-40 object-contain" /></div>}
+              {formData.collateralPhotoSerial && <div className="border border-gray-300 p-2" style={{ pageBreakInside: 'avoid' }}><p className="font-bold text-xs mb-1 text-center">SERIAL / PLATE</p><img src={formData.collateralPhotoSerial} className="w-full h-40 object-contain" /></div>}
+              {formData.collateralPhotoDocument && <div className="border border-gray-300 p-2" style={{ pageBreakInside: 'avoid' }}><p className="font-bold text-xs mb-1 text-center">TITLE / ORCR</p><img src={formData.collateralPhotoDocument} className="w-full h-40 object-contain" /></div>}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================================
+  // MAIN FORM RENDER (Only visible if not submitted)
+  // ============================================================================
   return (
-    <div className="min-h-screen bg-[#09090b] text-gray-300 p-4 font-sans pb-20 print:block print:h-auto print:min-h-0 print:overflow-visible print:bg-white print:text-black print:p-8">
+    <div className="min-h-screen bg-[#09090b] text-gray-300 p-4 font-sans pb-20 print:hidden">
       <div className="max-w-md mx-auto">
         {/* Header - Hidden during print */}
         <div className="text-center mb-6 pt-4 print:hidden">
@@ -233,13 +396,6 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
           {targetPortfolioName !== 'Main Portfolio' && (
             <p className="text-[#00df82] text-xs mt-2">Portfolio: {targetPortfolioName}</p>
           )}
-        </div>
-
-        {/* ===== PRINT-ONLY RECEIPT HEADER ===== */}
-        <div className="hidden print:block mb-8 text-center border-b-2 border-black pb-6">
-          <h1 className="text-2xl font-bold text-black mb-1">LOAN APPLICATION RECEIPT</h1>
-          <p className="text-sm text-gray-600">Official Document • {currentDate}</p>
-          <p className="text-xs text-gray-500 mt-1">Portfolio: {targetPortfolioName}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-7">
@@ -596,8 +752,7 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
                   {field: 'idPhotoUrl', label: 'Valid ID (Required)'},
                   {field: 'payslipPhotoUrl', label: 'Payment Slip / Payslip (Required)'},
                   {field: 'electricBillPhotoUrl', label: 'Electricity Bill (Proof of Address)'},
-                  {field: 'waterBillPhotoUrl', label: 'Water Bill'},
-                  {field: 'collateralUrl', label: 'Collateral Photo'}
+                  {field: 'waterBillPhotoUrl', label: 'Water Bill'}
                 ].map(item => (
                   <div key={item.field} className="bg-[#1c1c21] border border-[#2a2a35] rounded-lg p-3">
                     <label className="block text-gray-400 text-xs mb-1 uppercase tracking-widest">{item.label}</label>
@@ -616,271 +771,40 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
             </div>
           </div>
 
-          {/* SEC 4.5: KOLATERAL (PALIT-SIGURADO) - Optional - Hidden during print */}
+          {/* SEC 4.5: 🚀 UPGRADED COLLATERAL (PALIT-SIGURADO) */}
           <div className="print:hidden">
-            <h2 className="text-amber-400 font-bold text-lg mb-3 uppercase tracking-wider">5. Kolateral (Palit-Sigurado) - Optional</h2>
-            <div className={`${borderStyle} p-4 space-y-3`}>
-              <p className="text-xs text-zinc-500 mb-2">
-                If providing collateral for this loan, describe the item below. This will be documented in the contract.
-              </p>
-              <div className="grid grid-cols-1 gap-3">
-                <input 
-                  name="collateralName" 
-                  placeholder="Item Name (e.g., Samsung Galaxy S22)" 
-                  className={`${rapidInputStyle} bg-[#1c1c21] rounded-lg px-4`} 
-                  onChange={e => setFormData({...formData, collateralName: e.target.value})} 
-                />
-                <input 
-                  name="collateralDescription" 
-                  placeholder="Description (e.g., Black, 128GB, with charger and case)" 
-                  className={`${rapidInputStyle} bg-[#1c1c21] rounded-lg px-4`} 
-                  onChange={e => setFormData({...formData, collateralDescription: e.target.value})} 
-                />
-                <input 
-                  name="collateralDefects" 
-                  placeholder="Known Defects (e.g., Small scratch on screen, battery replaced)" 
-                  className={`${rapidInputStyle} bg-[#1c1c21] rounded-lg px-4`} 
-                  onChange={e => setFormData({...formData, collateralDefects: e.target.value})} 
-                />
-              </div>
-              
-              {/* AI Appraisal Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-3 border-t border-zinc-700/50">
-                <div>
-                  <label className="text-xs text-zinc-400 block mb-1">Estimated Value (₱)</label>
-                  <input 
-                    type="number" 
-                    name="collateralValue" 
-                    className="w-full bg-black border border-zinc-800 rounded p-2 text-white text-sm" 
-                    placeholder="e.g. 15000"
-                    onChange={e => setFormData({...formData, collateralValue: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-zinc-400 block mb-1">Age of Item</label>
-                  <input 
-                    type="text" 
-                    name="collateralAge" 
-                    className="w-full bg-black border border-zinc-800 rounded p-2 text-white text-sm" 
-                    placeholder="e.g. 1 Year, 6 Months"
-                    onChange={e => setFormData({...formData, collateralAge: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-zinc-400 block mb-1">Condition</label>
-                  <select 
-                    name="collateralCondition" 
-                    className="w-full bg-black border border-zinc-800 rounded p-2 text-white text-sm"
-                    value={formData.collateralCondition}
-                    onChange={e => setFormData({...formData, collateralCondition: e.target.value})}
-                  >
-                    <option value="Excellent">Excellent (Like New)</option>
-                    <option value="Good">Good (Minor Wear)</option>
-                    <option value="Fair">Fair (Visible Scratches/Dents)</option>
-                    <option value="Poor">Poor (Needs Repair)</option>
-                  </select>
-                </div>
-              </div>
-              <p className="text-xs text-amber-500/70 mt-2">
-                ⚠️ Collateral items will be forfeited in case of default per contract terms.
-              </p>
-            </div>
-          </div>
-
-          {/* SEC 6: LEGAL COMPLIANCE & CONSENT - Hidden during print */}
-          <div className="print:hidden">
-            <h2 className="text-red-400 font-bold text-lg mb-3 uppercase tracking-wider">6. Legal Compliance & Consent</h2>
+            <h2 className="text-purple-400 font-bold text-lg mb-1 uppercase tracking-wider">5. Pledged Collateral Declaration</h2>
+            <p className="text-xs text-zinc-400 mb-3 leading-relaxed">Provide details of the asset you are pledging as a guarantee against your loan.</p>
             <div className={`${borderStyle} p-4 space-y-4`}>
-              <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-4 text-xs text-zinc-400 leading-relaxed print:break-inside-avoid print:mb-4 print:bg-white print:border-black print:text-black">
-                <p className="font-bold text-white mb-2 uppercase tracking-wider print:text-black">DATA PRIVACY & CONSENT WAIVER</p>
-                <p className="mb-2 break-words print:text-black">
-                  By signing below, I hereby authorize the lending institution to collect, process, and store my personal and financial information for the purpose of evaluating my loan application.
-                </p>
-                <p className="mb-2 break-words print:text-black">
-                  I understand that my data may be shared with third-party verification services and credit bureaus for authentication and risk assessment purposes.
-                </p>
-                <p className="mb-2 break-words print:text-black">
-                  I certify that all information provided in this application is true and accurate to the best of my knowledge. I acknowledge that any false statement may result in immediate rejection of my application and potential legal action.
-                </p>
-                <p className="break-words print:text-black">
-                  I agree to the terms and conditions of the loan agreement, including but not limited to: interest rates, repayment schedules, and penalties for late or non-payment.
-                </p>
+              <div>
+                <label className="text-xs text-zinc-400 font-bold uppercase tracking-widest block mb-1">Asset Type</label>
+                <select required name="collateralType" className="w-full bg-black border border-zinc-800 rounded p-3 text-white text-sm" value={formData.collateralType} onChange={e => setFormData({...formData, collateralType: e.target.value})}>
+                  <option value="">Select Category...</option>
+                  <option value="Electronics">Electronics (Laptop, Phone, Tablet)</option>
+                  <option value="Vehicle">Vehicle (Motorcycle, Car)</option>
+                  <option value="Real Estate">Real Estate / Land</option>
+                  <option value="Jewelry">Jewelry / Watches</option>
+                  <option value="Other">Other Valuable Asset</option>
+                </select>
               </div>
-
-              {/* MGA TUNTUNIN AT KUNDISYON (Terms and Conditions) */}
-              <div className="bg-zinc-900 border border-zinc-700 rounded-md p-4 text-sm text-zinc-300 shadow-inner print:break-inside-avoid print:mb-4 print:bg-white print:border-black print:text-black print:shadow-none">
-                <h3 className="font-bold text-white text-base mb-3 border-b border-zinc-700 pb-2 print:text-black print:border-black">MGA TUNTUNIN AT KUNDISYON (Terms and Conditions)</h3>
-                <ol className="list-decimal pl-5 space-y-2 break-words">
-                  <li className="break-words print:text-black">
-                    <strong>INTERES AT GOOD PAYER DISCOUNT:</strong> Ang opisyal na flat-rate interest ng utang na ito ay <strong className="text-amber-400 print:text-black">10%</strong>. PERO, kung ang NANGUTANG ay magbabayad ng tama sa oras sa lahat ng kanyang iskedul, siya ay bibigyan ng <strong className="text-emerald-400 print:text-black">4% Good Payer Discount</strong> (kaya magiging 6% na lamang ang epektibong interes). 
-                    <br/>
-                    <span className="text-zinc-400 text-[11px] italic print:text-black">
-                      (Simpleng paliwanag: Kung palagi kang on-time, 6% lang ang tubo ng utang mo. Pero kapag na-late ka kahit isang araw sa iyong hulog, ma-vo-void ang discount at sisingilin ka ng buong 10% interes para sa buong kontrata.)
-                    </span>
-                  </li>
-                  <li className="break-words print:text-black">
-                    <strong>LOAN EXTENSION (ROLLOVER):</strong> Kung sakaling matapos ang kontrata at hindi pa kayang bayaran ng buo ang utang, ang NANGUTANG ay maaaring humingi ng palugit (Rollover). Upang ma-extend ang utang, kailangang magbayad ng <strong className="text-amber-400 print:text-black">Extension Fee</strong> na katumbas ng 6% ng orihinal na Principal.
-                    <br/>
-                    <span className="text-zinc-400 text-[11px] italic print:text-black">
-                      (Simpleng paliwanag: Kung ₱20,000 ang utang mo at hindi mo mabayaran sa due date, kailangan mong magbayad ng ₱1,200 Extension Fee para mabigyan ka ng panibagong palugit. Ang ₱1,200 na ito ay fee lamang at HINDI ibabawas sa utang mong ₱20,000.)
-                    </span>
-                  </li>
-                  <li className="break-words print:text-black">Ang nag PAUTANG ay may karapatang mangolekta o maningil ng utang sa pamamagitan ng mga lehitimong paraan tulad ng pagbisita sa bahay, pagtawag, o pagsulat ng liham.</li>
-                  <li className="break-words print:text-black">Ang mga impormasyong ibinigay ng NANGUTANG ay totoo at tama. Ang anumang maling impormasyon ay maaaring maging dahilan ng agarang pagbabayad ng buong halaga.</li>
-                  <li className="break-words print:text-black">Ang kasunduang ito ay sumasailalim sa batas ng Republika ng Pilipinas.</li>
-                  <li className="break-words print:text-black">Sa kaso ng hindi pagbabayad, ang NANGUTANG ay sumasang-ayon na maaaring isama ang kanyang pangalan sa lista ng mga delinquent borrowers.</li>
-                  <li className="break-words print:text-black">Ang pagpirma sa kasunduang ito ay patunay na ang NANGUTANG ay nagkasundo at sumasang-ayon sa lahat ng tuntunin at kundisyon.</li>
-                </ol>
+              <div>
+                <label className="text-xs text-zinc-400 font-bold uppercase tracking-widest block mb-1">Estimated Market Value (₱)</label>
+                <input required type="number" name="collateralValue" placeholder="e.g. 150000" className="w-full bg-black border border-zinc-800 rounded p-3 text-white text-sm" onChange={e => setFormData({...formData, collateralValue: e.target.value})} />
               </div>
-
-              <div className="print:break-inside-avoid print:mb-4">
-                <label className="block text-zinc-400 text-xs mb-2 uppercase tracking-widest print:text-black">Digital Signature (Sign Below)</label>
-                <SignaturePad onSignature={(dataUrl) => setFormData(prev => ({...prev, digitalSignature: dataUrl}))} />
+              <div>
+                <label className="text-xs text-zinc-400 font-bold uppercase tracking-widest block mb-1">Asset Specifications & Condition</label>
+                <textarea required rows={3} name="collateralCondition" placeholder="Include Make, Model, Year, Serial Number, OR/CR Number..." className="w-full bg-black border border-zinc-800 rounded p-3 text-white text-sm" onChange={e => setFormData({...formData, collateralCondition: e.target.value})}></textarea>
               </div>
-              <div className="flex items-center gap-2 text-xs text-zinc-500 print:text-black">
-                <input type="checkbox" required className="w-4 h-4 accent-emerald-500 print:hidden" />
-                <span className="break-words">I have read and agree to the Data Privacy & Consent Waiver above</span>
-              </div>
-            </div>
-          </div>
-
-          <button type="submit" disabled={status !== ""} className="w-full bg-[#00df82] border border-[#00df82]/40 text-[#09090b] py-5 font-black text-xs tracking-widest uppercase hover:bg-[#00df82]/80 disabled:opacity-50 rounded-xl transition-colors shadow-[0_0_20px_rgba(0,223,130,0.15)] print:hidden">
-            {status || "SUBMIT FORENSIC DOSSIER"}
-          </button>
-        </form>
-
-        {/* ===== PRINT-ONLY: BORROWER INFORMATION SUMMARY ===== */}
-        <div className="hidden print:block mt-8 text-black">
-          <h2 className="font-bold text-lg border-b border-black pb-2 mb-4">BORROWER INFORMATION</h2>
-          
-          <div className="grid grid-cols-2 gap-y-2 text-sm mb-6 break-inside-avoid">
-            <div className="font-semibold">Full Name:</div>
-            <div>{formData.firstName} {formData.lastName}</div>
-            
-            <div className="font-semibold">Phone:</div>
-            <div>{formData.phone || '—'}</div>
-            
-            <div className="font-semibold">Address:</div>
-            <div>{formData.address || '—'}</div>
-            
-            <div className="font-semibold">Birth Date:</div>
-            <div>{formData.birthDate || '—'}</div>
-            
-            <div className="font-semibold">Age:</div>
-            <div>{formData.age || '—'}</div>
-          </div>
-
-          <h2 className="font-bold text-lg border-b border-black pb-2 mb-4">FINANCIAL INFORMATION</h2>
-          
-          <div className="grid grid-cols-2 gap-y-2 text-sm mb-6 break-inside-avoid">
-            <div className="font-semibold">Employment/Business:</div>
-            <div>{formData.employment || '—'}</div>
-            
-            <div className="font-semibold">Gross Income:</div>
-            <div>₱{formData.income || '—'}</div>
-            
-            <div className="font-semibold">Existing Loans:</div>
-            <div>{formData.existingLoansDetails || 'None declared'}</div>
-            
-            <div className="font-semibold">Monthly Debt Payment:</div>
-            <div>₱{formData.monthlyDebtPayment || '0'}</div>
-            
-            <div className="font-semibold">Family Size:</div>
-            <div>{formData.familySize}</div>
-            
-            <div className="font-semibold">Working Members:</div>
-            <div>{formData.workingMembers}</div>
-            
-            <div className="font-semibold">Housing Status:</div>
-            <div>{formData.housingStatus}</div>
-            
-            <div className="font-semibold">Monthly Bills:</div>
-            <div>₱{formData.monthlyBills || '—'}</div>
-          </div>
-
-          <h2 className="font-bold text-lg border-b border-black pb-2 mb-4">REFERENCE</h2>
-          
-          <div className="grid grid-cols-2 gap-y-2 text-sm mb-6 break-inside-avoid">
-            <div className="font-semibold">Reference Name:</div>
-            <div>{formData.referenceName || '—'}</div>
-            
-            <div className="font-semibold">Reference Phone:</div>
-            <div>{formData.referencePhone || '—'}</div>
-          </div>
-
-          {/* Collateral Section */}
-          {formData.collateralName && (
-            <div className="break-inside-avoid">
-              <h2 className="font-bold text-lg border-b border-black pb-2 mb-4">COLLATERAL (PALIT-SIGURADO)</h2>
               
-              <div className="grid grid-cols-2 gap-y-2 text-sm mb-6">
-                <div className="font-semibold">Item Name:</div>
-                <div>{formData.collateralName}</div>
-                
-                <div className="font-semibold">Description:</div>
-                <div>{formData.collateralDescription || '—'}</div>
-                
-                <div className="font-semibold">Known Defects:</div>
-                <div>{formData.collateralDefects || 'None declared'}</div>
-              </div>
-            </div>
-          )}
+              {/* 6-Point Photo Grid */}
+              <div className="pt-2 border-t border-zinc-800">
+                <label className="text-xs text-zinc-400 font-bold uppercase tracking-widest block mb-3">Asset Photographic Evidence</label>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {[
+                    {field: 'collateralPhotoFront', label: '📸 FRONT VIEW'},
+                    {field: 'collateralPhotoRear', label: '📸 REAR / SIDE VIEW'},
+                    {field: 'collateralPhotoLeft', label: '📸 LEFT VIEW'},
+                    {field: 'collateralPhotoRight', label: '📸 RIGHT VIEW'},
+                    {field: 'collateralPhotoSerial', label: '🔍 SERIAL / PLATE'},
+                    {field: 'collateralPhotoDocument',
 
-          {/* ===== PRINT-ONLY: LEGAL COMPLIANCE & CONSENT ===== */}
-          <div className="print:block print:w-full print:h-auto print:overflow-visible whitespace-normal">
-            <h2 className="font-bold text-lg border-b border-black pb-2 mb-4 mt-6">LEGAL COMPLIANCE & CONSENT</h2>
-            
-            {/* DATA PRIVACY & CONSENT WAIVER - Allow natural page breaks */}
-            <div className="bg-transparent text-black text-xs leading-relaxed mb-6 whitespace-normal">
-              <p className="font-bold text-black mb-2 uppercase tracking-wider">DATA PRIVACY & CONSENT WAIVER</p>
-              <p className="mb-2 break-words text-black">
-                By signing below, I hereby authorize the lending institution to collect, process, and store my personal and financial information for the purpose of evaluating my loan application.
-              </p>
-              <p className="mb-2 break-words text-black">
-                I understand that my data may be shared with third-party verification services and credit bureaus for authentication and risk assessment purposes.
-              </p>
-              <p className="mb-2 break-words text-black">
-                I certify that all information provided in this application is true and accurate to the best of my knowledge. I acknowledge that any false statement may result in immediate rejection of my application and potential legal action.
-              </p>
-              <p className="break-words text-black">
-                I agree to the terms and conditions of the loan agreement, including but not limited to: interest rates, repayment schedules, and penalties for late or non-payment.
-              </p>
-            </div>
-
-            {/* MGA TUNTUNIN AT KUNDISYON - Allow natural page breaks */}
-            <div className="bg-transparent text-black text-sm mb-6 whitespace-normal">
-              <h3 className="font-bold text-black text-base mb-3 border-b border-black pb-2">MGA TUNTUNIN AT KUNDISYON (Terms and Conditions)</h3>
-              <ol className="list-decimal pl-5 space-y-2 break-words">
-                <li className="break-words text-black">Ang NANGUTANG ay sumasang-ayon na bayaran ang kabuuang halaga ng utang kasama ang interes sa petsang nakasaad sa iskedul ng pagbabayad.</li>
-                <li className="break-words text-black">Ang hindi pagbabayad sa tamang petsa ay magreresulta sa pagdagdag ng <strong className="text-black">5% penalty fee</strong> bawat buwan na hindi nababayaran.</li>
-                <li className="break-words text-black">Ang nag PAUTANG ay may karapatang mangolekta o maningil ng utang sa pamamagitan ng mga lehitimong paraan tulad ng pagbisita sa bahay, pagtawag, o pagsulat ng liham.</li>
-                <li className="break-words text-black">Ang mga impormasyong ibinigay ng NANGUTANG ay totoo at tama. Ang anumang maling impormasyon ay maaaring maging dahilan ng agarang pagbabayad ng buong halaga.</li>
-                <li className="break-words text-black">Ang kasunduang ito ay sumasailalim sa batas ng Republika ng Pilipinas.</li>
-                <li className="break-words text-black">Sa kaso ng hindi pagbabayad, ang NANGUTANG ay sumasang-ayon na maaaring isama ang kanyang pangalan sa lista ng mga delinquent borrowers.</li>
-                <li className="break-words text-black">Ang pagpirma sa kasunduang ito ay patunay na ang NANGUTANG ay nagkasundo at sumasang-ayon sa lahat ng tuntunin at kundisyon.</li>
-              </ol>
-            </div>
-          </div>
-
-          {/* Digital Signature Display - Keep break-inside-avoid for this small block */}
-          {formData.digitalSignature && (
-            <div className="mt-6 pt-4 border-t-2 border-black break-inside-avoid mb-4">
-              <h2 className="font-bold text-lg mb-3">DIGITAL SIGNATURE</h2>
-              <div className="bg-white border border-gray-400 p-2 inline-block">
-                <img src={formData.digitalSignature} alt="Digital Signature" className="max-h-24 print:invert" />
-              </div>
-              <p className="text-xs text-gray-600 mt-2 italic">I have read and agree to the Data Privacy & Consent Waiver above</p>
-            </div>
-          )}
-
-          {/* Footer for print receipt */}
-          <div className="mt-8 pt-4 border-t-2 border-black text-xs text-gray-600 text-center print:break-inside-avoid">
-            <p className="font-semibold mb-1">IMPORTANT: This is your official application receipt.</p>
-            <p>Keep this document for your records. Your application is now being processed.</p>
-            <p className="mt-2 text-gray-400">Generated: {currentDate}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
