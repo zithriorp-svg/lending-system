@@ -129,6 +129,15 @@ export async function disburseDirectLoan(data: DirectDisbursementData) {
       }
     });
 
+    // 🚀 INJECT: SYSTEM BOT SENDS MESSAGE TO COMM-LINK
+    await prisma.message.create({
+      data: {
+        clientId: client.id,
+        sender: "VAULT SYSTEM",
+        text: `💸 LOAN DISBURSED: TXN-${loan.id.toString().padStart(4, '0')} for ₱${data.principal.toLocaleString('en-US', {minimumFractionDigits: 2})} has been officially approved and deployed. Please refer to your Amortization Schedule for due dates.`
+      }
+    });
+
     // 6. Revalidate paths to refresh UI
     revalidatePath("/");
     revalidatePath("/payments");
