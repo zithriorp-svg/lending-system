@@ -8,7 +8,7 @@ import SignaturePad from "@/components/SignaturePad";
 interface Agent {
   id: number;
   name: string;
-  portfolio: string; // 🚀 Added portfolio tracking to the interface
+  portfolio?: string | null; // 🚀 Ensures the form knows agents have a portfolio tag
 }
 
 interface Portfolio {
@@ -36,8 +36,11 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
   const targetPortfolioId = targetPortfolio?.id || null;
   const targetPortfolioName = targetPortfolio?.name || "Main Portfolio";
   
-  // 🚀 FIXED: Filter the agents array to ONLY show agents assigned to this specific portfolio!
-  const filteredAgents = agents.filter(agent => agent.portfolio === targetPortfolioName);
+  // 🚀 BULLETPROOF FILTER: Forces the dropdown to ONLY show agents from the matching division.
+  const availableAgents = agents.filter(agent => {
+    const agentPort = agent.portfolio || "Main Portfolio";
+    return agentPort.toLowerCase() === targetPortfolioName.toLowerCase();
+  });
   
   const [principal, setPrincipal] = useState<number>(0);
   const [termType, setTermType] = useState<string>("Months");
@@ -167,7 +170,7 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
     setFormData((prev: any) => ({...prev, birthDate: bday, age: age}));
   };
 
-  const selectedAgentName = filteredAgents.find(a => a.id === parseInt(agentId))?.name || "No Agent Assigned";
+  const selectedAgentName = availableAgents.find(a => a.id === parseInt(agentId))?.name || "No Agent Assigned";
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
@@ -338,8 +341,8 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
                 <label className="text-xs text-zinc-400 block mb-1">Assigned Agent / Co-Maker (Optional)</label>
                 <select name="agentId" value={agentId} onChange={(e) => setAgentId(e.target.value)} className="w-full bg-black border border-zinc-800 rounded p-2 text-white text-sm">
                   <option value="">No Agent Assigned</option>
-                  {/* 🚀 FIXED: Using the filtered list of agents so only agents from THIS portfolio appear! */}
-                  {filteredAgents.map((agent) => (
+                  {/* 🚀 ONLY THE AGENTS FOR THIS PORTFOLIO WILL APPEAR HERE NOW! */}
+                  {availableAgents.map((agent) => (
                     <option key={agent.id} value={agent.id}>{agent.name}</option>
                   ))}
                 </select>
@@ -538,3 +541,4 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
     </div>
   );
 }
+
