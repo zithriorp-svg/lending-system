@@ -218,10 +218,15 @@ model Application {
   // AI Analysis
   credibilityScore     Int       @default(0)
   aiRiskSummary        String    @default("")
+  
+  // 🚀 CRITICAL: Portfolio Tracking
   portfolio            String    @default("Main Portfolio")
+  targetPortfolioId    Int?      // The explicit ID of the portfolio chosen during application
+  
   client               Client?
 
   @@index([portfolio])
+  @@index([targetPortfolioId])
   @@index([agentId])
 }
 
