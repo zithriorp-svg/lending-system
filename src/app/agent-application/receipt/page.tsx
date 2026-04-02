@@ -1,33 +1,5 @@
-"use client";
-
-import { useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import Link from "next/link";
-
-function DocumentViewer() {
-  const searchParams = useSearchParams();
-  const phone = searchParams.get("phone");
-  const [app, setApp] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (phone) {
-      // Re-using the built-in Next.js fetch to grab from the DB
-      fetch(`/api/agents/pending`)
-        .then(res => res.json())
-        .then(data => {
-          // Temporarily search the pending or active agents using the phone
-          // Note: In production we'd use a dedicated endpoint, but this works safely for now!
-          fetch(`/api/agents/dossier?phone=${phone}`) // We'll bypass and just fetch raw data in Server Component safely
-        })
-    }
-  }, [phone]);
-
-  return <div>Loading...</div>
-}
-
-// 🚀 REVERTING TO THE BULLETPROOF SERVER COMPONENT FOR IMMEDIATE FIX
 import { prisma } from "@/lib/db";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -37,12 +9,13 @@ export default async function AgentReceiptPage(props: { searchParams: Promise<{ 
 
   if (!phone) return <div className="p-10 text-white font-bold bg-[#09090b] min-h-screen">404: No phone number provided.</div>;
 
+  // Fetch the approved application using the agent's phone number
   const app = await prisma.agentApplication.findFirst({
     where: { phone: phone, status: "APPROVED" },
     orderBy: { createdAt: 'desc' }
   });
 
-  if (!app) return <div className="p-10 text-white font-bold bg-[#09090b] min-h-screen">404: Application not found or not approved. Please ensure you clicked "Approve" in the Pending Recruits tab first!</div>;
+  if (!app) return <div className="p-10 text-white font-bold bg-[#09090b] min-h-screen">404: Application not found or not approved.</div>;
 
   const currentDate = new Date(app.createdAt).toLocaleDateString('en-PH', { 
     year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' 
@@ -51,6 +24,7 @@ export default async function AgentReceiptPage(props: { searchParams: Promise<{ 
   return (
     <div className="min-h-screen bg-[#09090b] p-8 print:bg-white print:p-0">
       
+      {/* NO-PRINT HEADER (For Admin UI) */}
       <div className="print:hidden max-w-2xl mx-auto mb-8 flex justify-between items-center bg-zinc-900 border border-zinc-800 p-4 rounded-xl shadow-xl">
         <div>
           <h1 className="text-white font-bold">Master Contract Dossier</h1>
@@ -59,16 +33,15 @@ export default async function AgentReceiptPage(props: { searchParams: Promise<{ 
         <div className="flex gap-4">
           <Link href="/agents" className="px-4 py-2 border border-zinc-700 text-zinc-300 rounded-lg text-sm hover:bg-zinc-800 transition-all">← Back to Fleet</Link>
           
-          {/* 🚀 FIXED: USING onClick INSTEAD OF href="javascript" to bypass mobile browser blocks! */}
-          <button 
-            onClick={() => window.print()}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold shadow-lg transition-all"
-          >
-            🖨️ Print / Save PDF
-          </button>
+          {/* 🚀 FIXED: Native HTML Override to bypass Next.js Server Component function blocks! */}
+          <div dangerouslySetInnerHTML={{ __html: `<button onclick="window.print()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold shadow-lg transition-all">🖨️ Print / Save PDF</button>` }} />
+          
         </div>
       </div>
 
+      {/* ======================================= */}
+      {/* THE PRINTABLE CONTRACT (A4 Dimensions)  */}
+      {/* ======================================= */}
       <div className="max-w-3xl mx-auto bg-white text-black p-10 shadow-2xl print:shadow-none print:p-0 font-sans">
         
         <div className="border-b-2 border-black pb-4 mb-6 text-center">
@@ -99,7 +72,6 @@ export default async function AgentReceiptPage(props: { searchParams: Promise<{ 
           <div className="col-span-2 font-medium italic text-gray-700">{app.collateralCondition || '—'}</div>
         </div>
 
-        {/* 🚀 FIXED: Inverting the white ink to black so it prints natively! */}
         {app.digitalSignature && (
           <div className="mt-8 pt-4 border-t-2 border-black print:break-inside-avoid">
             <h2 className="font-bold text-lg mb-2 uppercase">Digital Signature</h2>
@@ -110,9 +82,10 @@ export default async function AgentReceiptPage(props: { searchParams: Promise<{ 
           </div>
         )}
 
+        {/* PAGE 2: PHOTO GRID */}
         <div style={{ pageBreakBefore: 'always' }} className="pt-10">
           <h2 className="text-2xl font-bold text-black mb-2 text-center uppercase tracking-wider">Appendix A: Forensic Evidence</h2>
-          <p className="text-sm text-gray-600 text-center mb-6 border-b-2 border-black pb-4 font-bold uppercase">Agent: {app.firstName} {app.lastName}</p>
+          <p className="text-sm text-gray-600 text-center mb-6 border-b-2 border-black pb-4 font-bold uppercase">Agent: {app.firstName} {app.lastName} • ID: {app.id}</p>
 
           <h3 className="font-bold text-lg mb-3 uppercase bg-gray-200 p-2 border border-gray-300">Identity Verification</h3>
           <div className="grid grid-cols-2 gap-6 mb-8">
