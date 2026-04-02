@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/db";
 import { getActivePortfolio } from "@/lib/portfolio";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache"; // 🚀 INJECTED: The UI Kicker
 
 export const dynamic = "force-dynamic";
 
 /**
  * DEBUG (GOD-MODE): Rewind Time & Full State Cleanse
- * Restores all original due dates, erases penalties, and restores discounts.
+ * Restores original dates, erases penalties, and FORCE REFRESHES the screen.
  */
 export async function POST() {
   try {
@@ -19,10 +20,7 @@ export async function POST() {
     });
 
     if (activeLoans.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: "No active loans found to reverse."
-      });
+      return NextResponse.json({ success: false, error: "No active loans found to reverse." });
     }
 
     let updatedCount = 0;
@@ -34,7 +32,7 @@ export async function POST() {
         data: { goodPayerDiscountRevoked: false }
       });
 
-      // 3. Recalculate original dates based on when the loan actually started
+      // 3. Recalculate original dates
       const startDate = new Date(loan.startDate);
       const termType = loan.termType || "Months";
 
@@ -44,7 +42,6 @@ export async function POST() {
           const periodNumber = inst.period;
           let originalDueDate = new Date(startDate);
 
-          // Rebuild the proper calendar date
           switch (termType.toLowerCase()) {
             case 'days':
               originalDueDate.setDate(startDate.getDate() + periodNumber);
@@ -58,17 +55,12 @@ export async function POST() {
               break;
           }
 
-          // Strip "LATE" or "MISSED" status, but preserve "PARTIAL" if they paid a little bit
           const newStatus = inst.status === "PARTIAL" ? "PARTIAL" : "PENDING";
 
           // 4. Erase the calculated penalties and fix the date
           await prisma.loanInstallment.update({
             where: { id: inst.id },
-            data: { 
-              dueDate: originalDueDate,
-              status: newStatus,
-              penaltyFee: 0 // 🔥 ERASE CALCULATED PENALTIES
-            }
+            data: { dueDate: originalDueDate, status: newStatus, penaltyFee: 0 }
           });
 
           updatedCount++;
@@ -76,15 +68,19 @@ export async function POST() {
       }
     }
 
-    // 5. Log the God-Mode Reverse in the audit trail
+    // 5. Log the God-Mode Reverse
     await prisma.auditLog.create({
       data: {
-        type: 'REWIND_TIME',
-        amount: 0,
-        description: `DEBUG (GOD-MODE): Reversed time and cleansed ${updatedCount} installments. Penalties erased and discounts restored.`,
+        type: 'REWIND_TIME', amount: 0,
+        description: `DEBUG (GOD-MODE): Reversed time and cleansed ${updatedCount} installments. Penalties erased.`,
         portfolio
       }
     });
+
+    // 6. 🚀 INJECTED: FORCE THE DASHBOARD TO RELOAD IMMEDIATELY
+    revalidatePath("/");
+    revalidatePath("/payments");
+    revalidatePath("/agent-portal");
 
     return NextResponse.json({
       success: true,
@@ -94,9 +90,6 @@ export async function POST() {
 
   } catch (error) {
     console.error("God-Mode Reverse error:", error);
-    return NextResponse.json({
-      success: false,
-      error: "Failed to reverse time and cleanse state."
-    }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Failed to reverse time and cleanse state." }, { status: 500 });
   }
 }
