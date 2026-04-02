@@ -116,7 +116,8 @@ function PenaltyButton({ installmentId, loanId, clientName, onPenaltyApplied }: 
 
   const handleApplyPenalty = async () => {
     if (applying || applied) return;
-    if (!confirm(`Apply ₱500 late fee and REVOKE 4% Good Payer Discount for ${clientName}?\n\nThis action cannot be undone.`)) return;
+    // 🚀 FIXED TEXT: Removing the ₱500 phrase completely
+    if (!confirm(`REVOKE the 4% Good Payer Discount for ${clientName}?\n\nThis action cannot be undone.`)) return;
 
     setApplying(true);
     try {
@@ -280,3 +281,4 @@ export default function DelinquencyAlerts({ overdue, dueToday, upcoming }: Delin
     </div>
   );
 }
+
