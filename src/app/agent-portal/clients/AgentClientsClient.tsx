@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { generateLedgerSummary, type LoanData } from "@/utils/notifications";
 
 interface InstallmentForLedger {
   period: number;
@@ -80,57 +79,22 @@ const formatCurrencyPrecise = (value: number) => {
 };
 
 /**
- * Generate Account Status Update message with Ledger Summary
+ * 🚀 UPGRADED: Self-contained Status Generator
  */
 const generateAccountStatusUpdate = (
   clientName: string,
   loan: LoanForLedger
 ): string => {
-  const loanData: LoanData = {
-    id: loan.id,
-    principal: loan.principal,
-    interestRate: loan.interestRate,
-    termDuration: loan.termDuration,
-    totalRepayment: loan.totalRepayment,
-    totalPaid: loan.totalPaid,
-    remainingBalance: loan.remainingBalance,
-    startDate: loan.startDate,
-    endDate: loan.endDate,
-    status: loan.status,
-    goodPayerDiscountRevoked: loan.goodPayerDiscountRevoked,
-    installments: loan.installments.map(inst => ({
-      period: inst.period,
-      dueDate: inst.dueDate,
-      expectedAmount: inst.expectedAmount,
-      principal: inst.principal,
-      interest: inst.interest,
-      penaltyFee: inst.penaltyFee,
-      status: inst.status,
-      paymentDate: inst.paymentDate,
-      amountPaid: inst.amountPaid
-    }))
-  };
-
-  let message = `ACCOUNT STATUS UPDATE 📊
-
-Hello ${clientName},
-
-This is a routine update regarding your active account with FinTech Vault.`;
-
-  message += generateLedgerSummary(loanData);
-  message += `\n- Company Manager`;
-
-  return message;
+  const txnId = loan.id.toString().padStart(4, '0');
+  return `ACCOUNT STATUS UPDATE 📊\n\nHello ${clientName},\n\nThis is a routine update regarding your active account with us.\n\nTXN-${txnId} SUMMARY:\nTotal Loan: ${formatCurrencyPrecise(loan.totalRepayment)}\nTotal Paid: ${formatCurrencyPrecise(loan.totalPaid)}\nRemaining Balance: ${formatCurrencyPrecise(loan.remainingBalance)}\n\nThank you for your continued partnership!\n\n- FinTech Vault`;
 };
 
-// Facebook Messenger Icon SVG component
 const MessengerIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24">
     <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.092.301 2.246.464 3.443.464 6.627 0 12-4.974 12-11.111S18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.26L19.752 8l-6.561 6.963z"/>
   </svg>
 );
 
-// FB Notify Button Component
 function FBNotifyButton({
   clientName,
   loan,
@@ -192,7 +156,6 @@ export default function AgentClientsClient({ clients, agentName, agentId }: Agen
   return (
     <main className="min-h-screen bg-black">
       <div className="max-w-4xl mx-auto p-4 space-y-6 pb-20">
-        {/* Header */}
         <div className="flex justify-between items-start pt-4">
           <div>
             <Link href="/agent-portal" className="text-sm text-zinc-500 hover:text-zinc-400 mb-2 block">
@@ -209,7 +172,6 @@ export default function AgentClientsClient({ clients, agentName, agentId }: Agen
           </div>
         </div>
 
-        {/* Security Badge */}
         <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-emerald-400">🔒</span>
@@ -218,7 +180,6 @@ export default function AgentClientsClient({ clients, agentName, agentId }: Agen
           <span className="text-xs text-zinc-500">Agent ID: {agentId}</span>
         </div>
 
-        {/* Client List */}
         <div className="space-y-4">
           {clients.length === 0 ? (
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-10 text-center">
@@ -233,10 +194,7 @@ export default function AgentClientsClient({ clients, agentName, agentId }: Agen
               const activeLoans = client.loans.filter(l => l.status === 'ACTIVE').length;
               
               return (
-                <div 
-                  key={client.id} 
-                  className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-xl"
-                >
+                <div key={client.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-xl">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-3">
                       <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-emerald-400 font-bold text-xl">
@@ -271,7 +229,6 @@ export default function AgentClientsClient({ clients, agentName, agentId }: Agen
                     </div>
                   </div>
 
-                  {/* Loans */}
                   <div className="border-t border-zinc-800 pt-4">
                     <p className="text-xs text-zinc-500 uppercase mb-3">Loans & Actions</p>
                     <div className="space-y-3">
@@ -314,7 +271,6 @@ export default function AgentClientsClient({ clients, agentName, agentId }: Agen
                               <span className="text-zinc-500">Principal: <span className="text-white">{formatCurrency(Number(loan.principal))}</span></span>
                               <span className="text-zinc-500">Remaining: <span className="text-amber-400">{formatCurrency(remaining)}</span></span>
                             </div>
-                            {/* Action Buttons */}
                             <div className="flex items-center gap-2 pt-2 border-t border-zinc-700">
                               <Link
                                 href={`/clients/${client.id}`}
