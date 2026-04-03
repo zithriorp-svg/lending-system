@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation"; // 🚀 INJECTED: Next.js Router for instant refresh
 
 interface CollectionNote {
   id: number;
@@ -14,8 +15,9 @@ interface CollectionLogProps {
   installmentId: number;
   penaltyFee: number;
   status: string;
-  expectedAmount?: number; // Optional - used for discount revocation calculation
-  principalAmount?: number; // For calculating the revoked 4% discount
+  expectedAmount?: number; 
+  principalAmount?: number; 
+  loanId?: number; // 🚀 INJECTED: Needed for the new God-Mode Engine
   onPenaltyApplied?: () => void;
 }
 
@@ -25,13 +27,18 @@ export default function CollectionLog({
   status,
   expectedAmount = 0,
   principalAmount = 0,
+  loanId,
   onPenaltyApplied 
 }: CollectionLogProps) {
+  const router = useRouter();
   const [notes, setNotes] = useState<CollectionNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [noteText, setNoteText] = useState("");
   const [saving, setSaving] = useState(false);
+  
+  // 🚀 INJECTED: State locks to prevent double-clicking
   const [applyingPenalty, setApplyingPenalty] = useState(false);
+  const [penaltyApplied, setPenaltyApplied] = useState(false);
   const [currentPenalty, setCurrentPenalty] = useState(penaltyFee);
 
   // Fetch existing notes
@@ -43,6 +50,11 @@ export default function CollectionLog({
       .then(data => {
         if (data.notes) {
           setNotes(data.notes);
+          // 🚀 Check if a penalty was already applied in the past to lock the button on load
+          const hasPenaltyNote = data.notes.some((n: any) => n.note.includes("DISCOUNT REVOKED"));
+          if (hasPenaltyNote || penaltyFee > 0) {
+            setPenaltyApplied(true);
+          }
         }
         setLoading(false);
       })
@@ -54,7 +66,7 @@ export default function CollectionLog({
       });
 
     return () => controller.abort();
-  }, [installmentId]);
+  }, [installmentId, penaltyFee]);
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-US', {
@@ -91,48 +103,58 @@ export default function CollectionLog({
     setSaving(false);
   };
 
-  // REBATE TRAP: Calculate penalty as the revoked 4% Good Payer Discount
-  // If principal is provided, use 4% of principal (the discount they lose)
-  // Otherwise fall back to 6% of expected amount (simplified default penalty)
-  const penaltyAmount = principalAmount > 0 
-    ? Math.round(principalAmount * 0.04 * 100) / 100  // 4% of principal = revoked discount
-    : Math.round(expectedAmount * 0.06 * 100) / 100;   // 6% fallback
-
+  // 🚀 REWIRED: Pointing to our God-Mode Engine
   const handleApplyPenalty = async () => {
+    if (applyingPenalty || penaltyApplied) return;
+    if (!loanId) {
+      alert("Error: Loan ID missing. Cannot apply penalty from this view.");
+      return;
+    }
+    
+    if (!confirm("REVOKE the 4% Good Payer Discount?\n\nThis action cannot be undone.")) return;
+
     setApplyingPenalty(true);
     try {
-      const res = await fetch('/api/collection', {
+      const res = await fetch('/api/enforce-penalty', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'penalty',
           installmentId,
-          penaltyAmount
+          loanId
         })
       });
 
       const data = await res.json();
-      if (data.success && data.installment) {
-        setCurrentPenalty(data.installment.penaltyFee);
-        // Add the penalty log to notes
+      if (data.success) {
+        setPenaltyApplied(true); // 🚀 Lock the button permanently
+        setCurrentPenalty(prev => prev + 40.00); // Visually update the penalty
+        
+        // Add the penalty log to notes instantly
         setNotes(prev => [{
           id: Date.now(),
-          note: `🚨 DISCOUNT REVOKED: 4% Good Payer Discount (₱${penaltyAmount.toLocaleString()}) forfeited. Total penalties: ₱${data.installment.penaltyFee}`,
+          note: `🚨 DISCOUNT REVOKED: 4% Good Payer Discount (₱40.00) forfeited. \nTotal penalties: ₱${(currentPenalty + 40.00).toFixed(2)}`,
           agentId: null,
           promisedDate: null,
           createdAt: new Date().toISOString()
         }, ...prev]);
+
         if (onPenaltyApplied) {
           onPenaltyApplied();
         }
+        
+        // Force the page to refresh data
+        router.refresh();
+      } else {
+        alert(data.error || "Failed to apply penalty.");
       }
     } catch (e) {
       console.error(e);
+      alert("Network error while applying penalty.");
     }
     setApplyingPenalty(false);
   };
 
-  // Only show for PENDING or LATE installments
+  // Only show for PENDING, PARTIAL, or LATE installments
   if (status === 'PAID') return null;
 
   return (
@@ -141,33 +163,41 @@ export default function CollectionLog({
         <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Collection Log</p>
         {currentPenalty > 0 && (
           <span className="text-xs text-rose-400 font-bold">
-            Penalties: ₱{currentPenalty.toLocaleString()}
+            Penalties: ₱{currentPenalty.toFixed(2)}
           </span>
         )}
       </div>
 
       {/* Quick Actions */}
-      <div className="flex gap-2 mb-3">
-        <input
-          type="text"
-          value={noteText}
-          onChange={(e) => setNoteText(e.target.value)}
-          placeholder="Log a note..."
-          className="flex-1 bg-zinc-900 border border-zinc-700 text-white text-sm p-2 rounded-lg outline-none focus:border-amber-500 transition-colors"
-        />
-        <button
-          onClick={handleAddNote}
-          disabled={saving || !noteText.trim()}
-          className="px-3 py-2 bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-bold rounded-lg hover:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {saving ? "..." : "📝 Log"}
-        </button>
+      <div className="flex flex-col sm:flex-row gap-2 mb-3">
+        <div className="flex flex-1 gap-2">
+          <input
+            type="text"
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            placeholder="Log a note..."
+            className="flex-1 min-w-[120px] bg-zinc-900 border border-zinc-700 text-white text-sm p-2 rounded-lg outline-none focus:border-amber-500 transition-colors"
+          />
+          <button
+            onClick={handleAddNote}
+            disabled={saving || !noteText.trim()}
+            className="px-3 py-2 bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-bold rounded-lg hover:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {saving ? "..." : "📝 Log"}
+          </button>
+        </div>
+        
+        {/* 🚀 UPGRADED PENALTY BUTTON */}
         <button
           onClick={handleApplyPenalty}
-          disabled={applyingPenalty}
-          className="px-3 py-2 bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-bold rounded-lg hover:bg-rose-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+          disabled={applyingPenalty || penaltyApplied}
+          className={`px-3 py-2 text-xs font-bold rounded-lg transition-colors whitespace-nowrap ${
+            penaltyApplied 
+            ? "bg-zinc-800 border border-zinc-700 text-zinc-500 cursor-not-allowed" 
+            : "bg-rose-500/20 border border-rose-500/30 text-rose-400 hover:bg-rose-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+          }`}
         >
-          {applyingPenalty ? "..." : "⚠️ Revoke Discount (Apply Penalty)"}
+          {applyingPenalty ? "..." : penaltyApplied ? "✓ Discount Revoked" : "⚠️ Revoke Discount (Apply Penalty)"}
         </button>
       </div>
 
@@ -176,14 +206,19 @@ export default function CollectionLog({
         <p className="text-xs text-zinc-500">Loading...</p>
       ) : notes.length > 0 ? (
         <div className="space-y-2 max-h-32 overflow-y-auto">
-          {notes.slice(0, 5).map((note) => (
-            <div key={note.id} className="text-xs bg-zinc-900/50 p-2 rounded-lg border border-zinc-800">
-              <p className="text-zinc-300">{note.note}</p>
-              <p className="text-zinc-600 mt-1">{formatDate(note.createdAt)}</p>
-            </div>
-          ))}
-          {notes.length > 5 && (
-            <p className="text-xs text-zinc-600 text-center">+{notes.length - 5} more notes</p>
+          {notes.slice(0, 6).map((note) => {
+            const isPenalty = note.note.includes("DISCOUNT REVOKED");
+            return (
+              <div key={note.id} className={`text-xs p-2 rounded-lg border ${isPenalty ? 'bg-rose-950/20 border-rose-900/30' : 'bg-zinc-900/50 border-zinc-800'}`}>
+                <p className={isPenalty ? 'text-rose-300 font-medium' : 'text-zinc-300'}>{note.note}</p>
+                <p className={`${isPenalty ? 'text-rose-500/70' : 'text-zinc-600'} mt-1 flex items-center gap-1`}>
+                  {isPenalty && <span>⚠️</span>} {formatDate(note.createdAt)}
+                </p>
+              </div>
+            );
+          })}
+          {notes.length > 6 && (
+            <p className="text-xs text-zinc-600 text-center">+{notes.length - 6} more notes</p>
           )}
         </div>
       ) : (
@@ -192,3 +227,4 @@ export default function CollectionLog({
     </div>
   );
 }
+
