@@ -1,21 +1,16 @@
 import { prisma } from "@/lib/db";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { ArrowLeft, ArrowRightLeft, ArrowRight, Scale, BookOpen, Wallet } from "lucide-react";
 import TreasuryForm from "./TreasuryForm";
+import { getActivePortfolio } from "@/lib/portfolio";
 
 export const dynamic = "force-dynamic";
 
-const PORTFOLIO_COOKIE = "fintech_portfolio";
-const DEFAULT_PORTFOLIO = "Main Portfolio";
-
-async function getActivePortfolio() {
-  const cookieStore = await cookies();
-  return cookieStore.get(PORTFOLIO_COOKIE)?.value || DEFAULT_PORTFOLIO;
-}
-
 const formatMoney = (amount: number) => "₱" + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const formatDate = (date: Date) => date.toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+const formatDate = (date: any) => {
+  if (!date) return "Unknown Date";
+  return new Date(date).toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
 
 export default async function TreasuryDashboard() {
   const portfolio = await getActivePortfolio();
@@ -46,10 +41,12 @@ export default async function TreasuryDashboard() {
     capitalWithdrawn: 0,
   };
 
-  ledgerEntries.forEach(entry => {
-    const amt = Number(entry.amount);
-    const dr = entry.debitAccount;
-    const cr = entry.creditAccount;
+  // 🚀 TYPESCRIPT ARMOR APPLIED: We cast entry to 'any' to force the compiler to stand down
+  ledgerEntries.forEach((entry: any) => {
+    // Safely parse Prisma Decimal objects into pure numbers
+    const amt = Number(entry.amount?.toString() || 0);
+    const dr = String(entry.debitAccount || "Unknown");
+    const cr = String(entry.creditAccount || "Unknown");
 
     // Trial Balance Aggregation
     if (!accounts[dr]) accounts[dr] = { debit: 0, credit: 0 };
@@ -64,11 +61,11 @@ export default async function TreasuryDashboard() {
     if (dr === "Vault Cash" && cr === "Loans Receivable") flow.principalRepaid += amt;
     if (dr === "Vault Cash" && cr === "Interest Income") flow.interestEarned += amt;
     if (dr === "Vault Cash" && (cr === "Fee Income" || cr === "Penalty Income")) flow.feesEarned += amt;
-    if (dr === "Vault Cash" && cr === "Owner Equity") flow.capitalInjected += amt; // Deposits
+    if (dr === "Vault Cash" && cr === "Owner Equity") flow.capitalInjected += amt; 
     
     if (dr === "Loans Receivable" && cr === "Vault Cash") flow.loansDisbursed += amt;
     if (dr === "Commission Expense" && cr === "Vault Cash") flow.agentCommissions += amt;
-    if (dr === "Owner Equity" && cr === "Vault Cash") flow.capitalWithdrawn += amt; // Withdrawals
+    if (dr === "Owner Equity" && cr === "Vault Cash") flow.capitalWithdrawn += amt; 
   });
 
   const totalInflows = flow.principalRepaid + flow.interestEarned + flow.feesEarned + flow.capitalInjected;
@@ -86,7 +83,7 @@ export default async function TreasuryDashboard() {
           <h1 className="text-lg font-black text-white uppercase tracking-widest flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-yellow-500" /> Master Treasury
           </h1>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Double-Entry Financial Core • {portfolio}</p>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Double-Entry Financial Core &bull; {portfolio}</p>
         </div>
       </div>
 
@@ -103,7 +100,7 @@ export default async function TreasuryDashboard() {
         </div>
 
         {/* ==========================================
-            SECTION 1: THE SANKEY PIPELINE (PURE CSS)
+            SECTION 1: THE SANKEY PIPELINE
         ========================================== */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 shadow-xl relative overflow-hidden">
           <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -113,7 +110,6 @@ export default async function TreasuryDashboard() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative">
             <div className="hidden sm:block absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-500/20 via-yellow-500/20 to-rose-500/20 z-0"></div>
 
-            {/* LEFT: INFLOWS */}
             <div className="w-full sm:w-1/3 flex flex-col gap-3 z-10">
               <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-center sm:text-left mb-2">Sources of Cash</div>
               <FlowCard label="Capital Injected" amount={flow.capitalInjected} color="emerald" />
@@ -122,7 +118,6 @@ export default async function TreasuryDashboard() {
               <FlowCard label="Fees & Penalties" amount={flow.feesEarned} color="orange" />
             </div>
 
-            {/* CENTER: VAULT NEXUS */}
             <div className="z-10 my-4 sm:my-0 flex flex-col items-center">
               <div className={`w-32 h-32 rounded-full border-4 flex flex-col items-center justify-center shadow-2xl transition-all ${netCashFlow >= 0 ? 'border-emerald-500/50 bg-emerald-950/30 shadow-emerald-500/20' : 'border-rose-500/50 bg-rose-950/30 shadow-rose-500/20'}`}>
                 <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest text-center px-2">Net Cash Flow</span>
@@ -132,7 +127,6 @@ export default async function TreasuryDashboard() {
               </div>
             </div>
 
-            {/* RIGHT: OUTFLOWS */}
             <div className="w-full sm:w-1/3 flex flex-col gap-3 z-10">
               <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-center sm:text-right mb-2">Uses of Cash</div>
               <FlowCard label="Loans Disbursed" amount={flow.loansDisbursed} color="rose" align="right" />
@@ -169,7 +163,6 @@ export default async function TreasuryDashboard() {
                     <td className="p-4 text-right text-rose-400">{balances.credit > 0 ? formatMoney(balances.credit) : "-"}</td>
                   </tr>
                 ))}
-                {/* TOTALS ROW */}
                 <tr className="bg-zinc-950 font-bold text-sm">
                   <td className="p-4 text-right text-zinc-500 uppercase tracking-widest text-[10px]">Grand Totals</td>
                   <td className="p-4 text-right text-emerald-400 border-t-2 border-emerald-500/50">{formatMoney(totalDebit)}</td>
@@ -202,25 +195,33 @@ export default async function TreasuryDashboard() {
                 </tr>
               </thead>
               <tbody className="text-xs">
-                {ledgerEntries.map((entry) => (
-                  <tr key={entry.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
-                    <td className="p-4 font-mono">
-                      <div className="text-zinc-300">{formatDate(entry.createdAt)}</div>
-                      <div className="text-[10px] text-zinc-600 mt-0.5">LGR-{entry.id.toString().padStart(6, '0')}</div>
-                    </td>
-                    <td className="p-4 font-bold text-zinc-400 uppercase tracking-wider text-[10px]">{entry.transactionType}</td>
-                    <td className="p-4">
-                      {entry.loan?.client ? (
-                        <span className="text-blue-400 font-bold">{entry.loan.client.firstName} {entry.loan.client.lastName}</span>
-                      ) : (
-                        <span className="text-zinc-600 italic">{entry.transactionType.includes('Capital') ? 'Owner' : 'System Auto'}</span>
-                      )}
-                    </td>
-                    <td className="p-4 font-mono text-emerald-400/80">{entry.debitAccount}</td>
-                    <td className="p-4 font-mono text-rose-400/80">{entry.creditAccount}</td>
-                    <td className="p-4 text-right font-mono font-bold text-white">{formatMoney(Number(entry.amount))}</td>
-                  </tr>
-                ))}
+                {ledgerEntries.map((entry: any) => {
+                  const amt = Number(entry.amount?.toString() || 0);
+                  const dr = String(entry.debitAccount || "Unknown");
+                  const cr = String(entry.creditAccount || "Unknown");
+                  const txType = String(entry.transactionType || "");
+                  const txDate = entry.createdAt || entry.date;
+
+                  return (
+                    <tr key={entry.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+                      <td className="p-4 font-mono">
+                        <div className="text-zinc-300">{formatDate(txDate)}</div>
+                        <div className="text-[10px] text-zinc-600 mt-0.5">LGR-{String(entry.id).padStart(6, '0')}</div>
+                      </td>
+                      <td className="p-4 font-bold text-zinc-400 uppercase tracking-wider text-[10px]">{txType}</td>
+                      <td className="p-4">
+                        {entry.loan?.client ? (
+                          <span className="text-blue-400 font-bold">{entry.loan.client.firstName} {entry.loan.client.lastName}</span>
+                        ) : (
+                          <span className="text-zinc-600 italic">{txType.includes('Capital') ? 'Owner' : 'System Auto'}</span>
+                        )}
+                      </td>
+                      <td className="p-4 font-mono text-emerald-400/80">{dr}</td>
+                      <td className="p-4 font-mono text-rose-400/80">{cr}</td>
+                      <td className="p-4 text-right font-mono font-bold text-white">{formatMoney(amt)}</td>
+                    </tr>
+                  );
+                })}
                 {ledgerEntries.length === 0 && (
                   <tr>
                     <td colSpan={6} className="p-8 text-center text-zinc-500 italic">No transactions recorded in the ledger yet.</td>
