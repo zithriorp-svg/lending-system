@@ -1,19 +1,14 @@
 import { prisma } from "@/lib/db";
 import { getActivePortfolio } from "@/lib/portfolio";
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache"; // 🚀 INJECTED: The UI Kicker
+import { revalidatePath } from "next/cache"; 
 
 export const dynamic = "force-dynamic";
 
-/**
- * DEBUG (GOD-MODE): Rewind Time & Full State Cleanse
- * Restores original dates, erases penalties, and FORCE REFRESHES the screen.
- */
 export async function POST() {
   try {
     const portfolio = await getActivePortfolio();
     
-    // 1. Get all ACTIVE loans in the current portfolio
     const activeLoans = await prisma.loan.findMany({
       where: { portfolio, status: "ACTIVE" },
       include: { installments: true }
@@ -26,18 +21,15 @@ export async function POST() {
     let updatedCount = 0;
 
     for (const loan of activeLoans) {
-      // 2. Restore the Good Payer Discount (Remove the penalty lock)
       await prisma.loan.update({
         where: { id: loan.id },
         data: { goodPayerDiscountRevoked: false }
       });
 
-      // 3. Recalculate original dates
       const startDate = new Date(loan.startDate);
       const termType = loan.termType || "Months";
 
       for (const inst of loan.installments) {
-        // Only cleanse installments that are NOT fully paid yet
         if (inst.status !== "PAID") {
           const periodNumber = inst.period;
           let originalDueDate = new Date(startDate);
@@ -57,7 +49,6 @@ export async function POST() {
 
           const newStatus = inst.status === "PARTIAL" ? "PARTIAL" : "PENDING";
 
-          // 4. Erase the calculated penalties and fix the date
           await prisma.loanInstallment.update({
             where: { id: inst.id },
             data: { dueDate: originalDueDate, status: newStatus, penaltyFee: 0 }
@@ -68,7 +59,6 @@ export async function POST() {
       }
     }
 
-    // 5. Log the God-Mode Reverse
     await prisma.auditLog.create({
       data: {
         type: 'REWIND_TIME', amount: 0,
@@ -77,7 +67,6 @@ export async function POST() {
       }
     });
 
-    // 6. 🚀 INJECTED: FORCE THE DASHBOARD TO RELOAD IMMEDIATELY
     revalidatePath("/");
     revalidatePath("/payments");
     revalidatePath("/agent-portal");
@@ -85,7 +74,6 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       message: `God-Mode Reverse Complete! Cleansed ${updatedCount} installments.`,
-      installmentsUpdated: updatedCount
     });
 
   } catch (error) {
