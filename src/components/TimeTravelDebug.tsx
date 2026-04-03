@@ -1,20 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { fastForwardTime, reverseTime } from "./timeTravelActions";
+import { useRouter } from "next/navigation";
 
 export default function TimeTravelDebug() {
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleFastForward = async () => {
     setLoading(true);
-    await fastForwardTime();
+    try {
+      await fetch('/api/debug/fast-forward', { method: 'POST' });
+      router.refresh(); 
+    } catch (e) {
+      console.error("Network error during time travel.");
+    }
     setLoading(false);
   };
 
   const handleReverse = async () => {
     setLoading(true);
-    await reverseTime();
+    try {
+      await fetch('/api/debug/rewind', { method: 'POST' });
+      router.refresh(); 
+    } catch (e) {
+      console.error("Network error during time reversal.");
+    }
     setLoading(false);
   };
 
@@ -46,7 +57,7 @@ export default function TimeTravelDebug() {
       </div>
       
       <p className="text-xs text-zinc-500 mt-4 text-center">
-        Warning: Fast-Forward pushes all pending due dates 7 days into the past to trigger overdue warnings. Reverse restores them.
+        Warning: Fast-Forward pushes all pending due dates 7 days into the past to trigger overdue warnings. Reverse restores them and cleanses penalties.
       </p>
     </div>
   );
