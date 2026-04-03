@@ -21,63 +21,52 @@ export async function POST() {
     let updatedCount = 0;
 
     for (const loan of activeLoans) {
-      // 1. Restore the Good Payer Discount
       await prisma.loan.update({
         where: { id: loan.id },
         data: { goodPayerDiscountRevoked: false }
       });
 
-      // 🚀 2. THE VAPORIZER: Obliterate all corrupted collection logs for this loan!
-      const installmentIds = loan.installments.map(i => i.id);
-      if (installmentIds.length > 0) {
-        await prisma.collectionLog.deleteMany({
-          where: { installmentId: { in: installmentIds } }
-        });
-      }
-
       const startDate = new Date(loan.startDate);
       const termType = loan.termType || "Months";
 
-      // 3. Reset dates and erase penalties mathematically
       for (const inst of loan.installments) {
-        if (inst.status !== "PAID") {
-          const periodNumber = inst.period;
-          let originalDueDate = new Date(startDate);
+        // 🚀 UPGRADE: We now wipe penalties for EVERY installment to fix the 404040 bug!
+        const periodNumber = inst.period;
+        let originalDueDate = new Date(startDate);
 
-          switch (termType.toLowerCase()) {
-            case 'days':
-              originalDueDate.setDate(startDate.getDate() + periodNumber);
-              break;
-            case 'weeks':
-              originalDueDate.setDate(startDate.getDate() + (periodNumber * 7));
-              break;
-            case 'months':
-            default:
-              originalDueDate.setMonth(startDate.getMonth() + periodNumber);
-              break;
-          }
-
-          const newStatus = inst.status === "PARTIAL" ? "PARTIAL" : "PENDING";
-
-          await prisma.loanInstallment.update({
-            where: { id: inst.id },
-            data: { dueDate: originalDueDate, status: newStatus, penaltyFee: 0 }
-          });
-
-          updatedCount++;
+        switch (termType.toLowerCase()) {
+          case 'days':
+            originalDueDate.setDate(startDate.getDate() + periodNumber);
+            break;
+          case 'weeks':
+            originalDueDate.setDate(startDate.getDate() + (periodNumber * 7));
+            break;
+          case 'months':
+          default:
+            originalDueDate.setMonth(startDate.getMonth() + periodNumber);
+            break;
         }
+
+        // Keep PAID/PARTIAL status if already paid, but reset LATE back to PENDING
+        const newStatus = inst.status === "PAID" ? "PAID" : (inst.status === "PARTIAL" ? "PARTIAL" : "PENDING");
+
+        await prisma.loanInstallment.update({
+          where: { id: inst.id },
+          data: { dueDate: originalDueDate, status: newStatus, penaltyFee: 0 }
+        });
+
+        updatedCount++;
       }
     }
 
     await prisma.auditLog.create({
       data: {
         type: 'REWIND_TIME', amount: 0,
-        description: `DEBUG (GOD-MODE): Reversed time, cleansed ${updatedCount} installments, and vaporized corrupted logs.`,
+        description: `DEBUG (GOD-MODE): Reversed time and cleansed ${updatedCount} installments. Penalties erased.`,
         portfolio
       }
     });
 
-    // Force the entire UI to refresh
     revalidatePath("/");
     revalidatePath("/payments");
     revalidatePath("/agent-portal");
@@ -85,7 +74,7 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
-      message: `God-Mode Reverse Complete! Cleansed ${updatedCount} installments and wiped corrupted logs.`,
+      message: `God-Mode Reverse Complete! Cleansed ${updatedCount} installments.`,
     });
 
   } catch (error) {
