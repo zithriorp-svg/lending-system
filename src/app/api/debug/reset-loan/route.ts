@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getActivePortfolio } from "@/lib/portfolio";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache"; // 🚀 INJECTED: The UI Kicker
 
 /**
  * DEBUG: Reset Specific Loan
@@ -41,13 +42,21 @@ export async function POST(req: Request) {
       });
     }
 
+    // 🚀 THE VAPORIZER: Obliterate all corrupted collection logs for this specific loan!
+    const installmentIds = loan.installments.map(i => i.id);
+    if (installmentIds.length > 0) {
+      await prisma.collectionLog.deleteMany({
+        where: { installmentId: { in: installmentIds } }
+      });
+    }
+
     // Calculate original due dates based on loan start date and term type
     const startDate = new Date(loan.startDate);
     const termType = loan.termType || "Months";
     const termDuration = loan.termDuration || 1;
 
     // Reset each installment to its original due date
-    const updatePromises = loan.installments.map((installment, index) => {
+    const updatePromises = loan.installments.map((installment) => {
       const periodNumber = installment.period;
       let newDueDate = new Date(startDate);
 
@@ -98,10 +107,16 @@ export async function POST(req: Request) {
         amount: 0,
         referenceId: loan.id,
         referenceType: 'LOAN',
-        description: `DEBUG: Reset Loan #${loan.id} (${loan.client.firstName} ${loan.client.lastName}) - ${loan.installments.length} installments restored to original dates`,
+        description: `DEBUG: Reset Loan #${loan.id} (${loan.client.firstName} ${loan.client.lastName}) - ${loan.installments.length} installments restored, corrupted logs vaporized.`,
         portfolio
       }
     });
+
+    // 🚀 Force the UI to refresh instantly
+    revalidatePath("/");
+    revalidatePath("/payments");
+    revalidatePath("/agent-portal");
+    revalidatePath("/clients/[id]", "page");
 
     return NextResponse.json({
       success: true,
