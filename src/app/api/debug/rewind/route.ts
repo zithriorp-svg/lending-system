@@ -21,14 +21,24 @@ export async function POST() {
     let updatedCount = 0;
 
     for (const loan of activeLoans) {
+      // 1. Restore the Good Payer Discount
       await prisma.loan.update({
         where: { id: loan.id },
         data: { goodPayerDiscountRevoked: false }
       });
 
+      // 🚀 2. THE VAPORIZER: Obliterate all corrupted collection logs for this loan!
+      const installmentIds = loan.installments.map(i => i.id);
+      if (installmentIds.length > 0) {
+        await prisma.collectionLog.deleteMany({
+          where: { installmentId: { in: installmentIds } }
+        });
+      }
+
       const startDate = new Date(loan.startDate);
       const termType = loan.termType || "Months";
 
+      // 3. Reset dates and erase penalties mathematically
       for (const inst of loan.installments) {
         if (inst.status !== "PAID") {
           const periodNumber = inst.period;
@@ -62,18 +72,20 @@ export async function POST() {
     await prisma.auditLog.create({
       data: {
         type: 'REWIND_TIME', amount: 0,
-        description: `DEBUG (GOD-MODE): Reversed time and cleansed ${updatedCount} installments. Penalties erased.`,
+        description: `DEBUG (GOD-MODE): Reversed time, cleansed ${updatedCount} installments, and vaporized corrupted logs.`,
         portfolio
       }
     });
 
+    // Force the entire UI to refresh
     revalidatePath("/");
     revalidatePath("/payments");
     revalidatePath("/agent-portal");
+    revalidatePath("/clients/[id]", "page");
 
     return NextResponse.json({
       success: true,
-      message: `God-Mode Reverse Complete! Cleansed ${updatedCount} installments.`,
+      message: `God-Mode Reverse Complete! Cleansed ${updatedCount} installments and wiped corrupted logs.`,
     });
 
   } catch (error) {
