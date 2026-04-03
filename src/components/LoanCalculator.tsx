@@ -62,7 +62,7 @@ export default function LoanCalculator({
   preselectedAgentId
 }: LoanCalculatorProps) {
   const [principal, setPrincipal] = useState<number>(suggestedPrincipal);
-  const [interestRate, setInterestRate] = useState<number>(6); // 6% effective rate (Good Payer Discount)
+  const [interestRate, setInterestRate] = useState<number>(6); // 6% effective rate
   const [termDuration, setTermDuration] = useState<number>(suggestedDuration || 3);
   const [termType, setTermType] = useState<"Days" | "Weeks" | "Months">(
     (suggestedTermType as "Days" | "Weeks" | "Months") || "Months"
@@ -71,16 +71,13 @@ export default function LoanCalculator({
   const [showSchedule, setShowSchedule] = useState(false);
   const [calculated, setCalculated] = useState(false);
   
-  // Agent selection state - initialize with suggestedAgentId or preselectedAgentId
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(suggestedAgentId || preselectedAgentId || null);
   const [loadingAgents, setLoadingAgents] = useState(true);
 
-  // G1C: Vault Cash state for liquidity check
   const [vaultCash, setVaultCash] = useState<number | null>(null);
   const [loadingVaultCash, setLoadingVaultCash] = useState(true);
 
-  // Fetch agents on mount
   useEffect(() => {
     const controller = new AbortController();
     fetch('/api/agents', { signal: controller.signal })
@@ -91,16 +88,13 @@ export default function LoanCalculator({
         }
       })
       .catch(e => {
-        if (e.name !== 'AbortError') {
-          console.error(e);
-        }
+        if (e.name !== 'AbortError') console.error(e);
       })
       .finally(() => setLoadingAgents(false));
 
     return () => controller.abort();
   }, []);
 
-  // G1C: Fetch vault cash on mount
   useEffect(() => {
     const controller = new AbortController();
     fetch('/api/vault-cash', { signal: controller.signal })
@@ -111,35 +105,32 @@ export default function LoanCalculator({
         }
       })
       .catch(e => {
-        if (e.name !== 'AbortError') {
-          console.error(e);
-        }
+        if (e.name !== 'AbortError') console.error(e);
       })
       .finally(() => setLoadingVaultCash(false));
 
     return () => controller.abort();
   }, []);
 
-  // Calculate totals
-  const totalInterest = principal * (interestRate / 100);
-  const totalRepayment = principal + totalInterest;
-  const paymentPerPeriod = termDuration > 0 ? totalRepayment / termDuration : 0;
+  // 🚀 ANTI-BLEEDING: Forced Exact Totals
+  const totalInterest = Number((principal * (interestRate / 100)).toFixed(2));
+  const totalRepayment = Number((principal + totalInterest).toFixed(2));
 
-  // G1C: Liquidity safety check - Principal vs Vault Cash
+  // G1C: Liquidity safety check
   const insufficientLiquidity = vaultCash !== null && principal > vaultCash;
   const liquidityDeficit = insufficientLiquidity ? principal - (vaultCash || 0) : 0;
 
-  // Calculate amortization schedule
+  // 🚀 ANTI-BLEEDING: The Sweeper Engine
   const calculateSchedule = () => {
     const newSchedule: AmortizationRow[] = [];
     const startDate = new Date();
-    const principalPerPeriod = principal / termDuration;
-    const interestPerPeriod = totalInterest / termDuration;
+    
+    let remainingPrincipalToDistribute = principal;
+    let remainingInterestToDistribute = totalInterest;
     
     for (let i = 1; i <= termDuration; i++) {
       const dueDate = new Date(startDate);
       
-      // Calculate due date based on term type
       switch (termType) {
         case "Days":
           dueDate.setDate(dueDate.getDate() + i);
@@ -152,15 +143,38 @@ export default function LoanCalculator({
           break;
       }
       
-      const remainingBalance = totalRepayment - (paymentPerPeriod * i);
+      const isLastPeriod = (i === termDuration);
+      let strictPrincipal = 0;
+      let strictInterest = 0;
+
+      if (isLastPeriod) {
+        // The final payment sweeps up all exact remaining pennies
+        strictPrincipal = Number(remainingPrincipalToDistribute.toFixed(2));
+        strictInterest = Number(remainingInterestToDistribute.toFixed(2));
+      } else {
+        // Force strict 2-decimal rounding for regular payments
+        strictPrincipal = Number((principal / termDuration).toFixed(2));
+        strictInterest = Number((totalInterest / termDuration).toFixed(2));
+        
+        remainingPrincipalToDistribute -= strictPrincipal;
+        remainingInterestToDistribute -= strictInterest;
+      }
+
+      const strictTotalAmount = Number((strictPrincipal + strictInterest).toFixed(2));
+      
+      const remainingBalanceBeforeThisPayment = isLastPeriod 
+        ? strictTotalAmount 
+        : Number(((remainingPrincipalToDistribute + remainingInterestToDistribute) + strictTotalAmount).toFixed(2));
+      
+      const finalRemainingBalance = isLastPeriod ? 0 : Number((remainingBalanceBeforeThisPayment - strictTotalAmount).toFixed(2));
       
       newSchedule.push({
         period: i,
         paymentDate: dueDate,
-        amount: paymentPerPeriod,
-        principalPortion: principalPerPeriod,
-        interestPortion: interestPerPeriod,
-        remainingBalance: Math.max(0, remainingBalance)
+        amount: strictTotalAmount,
+        principalPortion: strictPrincipal,
+        interestPortion: strictInterest,
+        remainingBalance: finalRemainingBalance
       });
     }
     
@@ -169,17 +183,14 @@ export default function LoanCalculator({
     setCalculated(true);
   };
 
-  // Format currency
   const formatCurrency = (amount: number) => {
     return `₱${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  // Format date
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  // Handle disburse
   const handleDisburse = async () => {
     if (!calculated || schedule.length === 0) {
       alert("Please calculate the schedule first.");
@@ -211,22 +222,22 @@ export default function LoanCalculator({
   const inputStyle = "w-full bg-[#1c1c21] border border-[#2a2a35] text-white font-bold p-3 rounded-xl outline-none focus:border-[#00df82] transition-colors";
   const labelStyle = "text-xs text-gray-500 font-bold uppercase tracking-widest";
 
+  // Display value for "Per Period" calculation
+  const displayPaymentPerPeriod = termDuration > 0 ? totalRepayment / termDuration : 0;
+
   return (
     <div className="bg-[#0f0f13] border border-[#00df82]/40 p-5 rounded-2xl space-y-5 shadow-[0_0_15px_rgba(0,223,130,0.05)] print:bg-white print:border-black print:shadow-none">
-      {/* Header */}
       <div className="flex justify-between items-center print:hidden">
         <h2 className="text-[#00df82] font-bold uppercase tracking-widest text-sm">💰 Approve & Fund</h2>
         <span className="text-xs text-gray-500">For: {applicantName}</span>
       </div>
 
-      {/* Print Header - Only visible when printing */}
       <div className="hidden print:block mb-4">
         <h1 className="text-xl font-bold text-black">LOAN DISBURSEMENT</h1>
         <p className="text-sm text-gray-600">Borrower: {applicantName}</p>
         <p className="text-sm text-gray-600">Principal: ₱{principal.toLocaleString()} | Interest: 10% Official (6% Discounted Rate with Good Payer Discount)</p>
       </div>
 
-      {/* Agent Selection - Hidden during print */}
       <div className="print:hidden">
         <label className={labelStyle}>Assigned Agent / Co-Maker (Optional)</label>
         <select
@@ -243,13 +254,10 @@ export default function LoanCalculator({
           ))}
         </select>
         {selectedAgentId && (
-          <p className="text-xs text-emerald-400 mt-1">
-            ✓ Agent will be assigned as Co-Maker for this loan
-          </p>
+          <p className="text-xs text-emerald-400 mt-1">✓ Agent will be assigned as Co-Maker for this loan</p>
         )}
       </div>
 
-      {/* Calculator Inputs - Hidden during print */}
       <div className="grid grid-cols-2 gap-4 print:hidden">
         <div className="col-span-2">
           <label className={labelStyle}>Principal Amount (₱)</label>
@@ -262,31 +270,18 @@ export default function LoanCalculator({
           />
         </div>
         <div>
-          {/* Rebate Trap Pricing Structure */}
           <label className={labelStyle}>INTEREST RATE STRUCTURE</label>
           <div className="grid grid-cols-2 gap-2 mt-2">
             <div>
               <label className="text-xs text-zinc-400 font-bold">OFFICIAL RATE (%)</label>
-              <input
-                type="number"
-                value={10}
-                readOnly
-                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-red-400 font-mono line-through"
-              />
+              <input type="number" value={10} readOnly className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-red-400 font-mono line-through" />
             </div>
             <div>
               <label className="text-xs text-zinc-400 font-bold">DISCOUNTED RATE (%)</label>
-              <input
-                type="number"
-                value={6}
-                readOnly
-                className="w-full bg-black border border-emerald-700 rounded-xl p-3 text-emerald-400 font-mono font-bold"
-              />
+              <input type="number" value={6} readOnly className="w-full bg-black border border-emerald-700 rounded-xl p-3 text-emerald-400 font-mono font-bold" />
             </div>
           </div>
-          <p className="text-xs text-zinc-500 mt-2 italic">
-            * Schedule generated at 6% (Good Payer Discount). If client defaults, rate reverts to 10% per contract.
-          </p>
+          <p className="text-xs text-zinc-500 mt-2 italic">* Schedule generated at 6% (Good Payer Discount). If client defaults, rate reverts to 10% per contract.</p>
         </div>
         <div>
           <label className={labelStyle}>Duration</label>
@@ -312,7 +307,6 @@ export default function LoanCalculator({
         </div>
       </div>
 
-      {/* Quick Summary */}
       <div className="grid grid-cols-3 gap-3 bg-[#1c1c21] p-4 rounded-xl print:bg-gray-100 print:border print:border-black">
         <div className="text-center">
           <p className="text-xs text-gray-500 print:text-gray-600">Interest</p>
@@ -324,11 +318,10 @@ export default function LoanCalculator({
         </div>
         <div className="text-center">
           <p className="text-xs text-gray-500 print:text-gray-600">Per Period</p>
-          <p className="text-lg font-bold text-white print:text-black">{formatCurrency(paymentPerPeriod)}</p>
+          <p className="text-lg font-bold text-white print:text-black">{formatCurrency(displayPaymentPerPeriod)}</p>
         </div>
       </div>
 
-      {/* Calculate Button - Hidden during print */}
       <button
         type="button"
         onClick={calculateSchedule}
@@ -337,7 +330,6 @@ export default function LoanCalculator({
         📊 Calculate Schedule
       </button>
 
-      {/* Amortization Schedule Preview */}
       {showSchedule && schedule.length > 0 && (
         <div className="border border-[#2a2a35] rounded-xl overflow-hidden print:border-black">
           <div className="flex justify-between items-center p-3 bg-[#1c1c21] print:bg-gray-100">
@@ -369,35 +361,23 @@ export default function LoanCalculator({
         </div>
       )}
 
-      {/* G1C: Insufficient Liquidity Warning - Hidden during print */}
       {insufficientLiquidity && (
         <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-4 print:hidden">
           <div className="flex items-start gap-3">
             <span className="text-2xl">⚠️</span>
             <div>
-              <p className="text-red-400 font-bold uppercase tracking-wider text-sm">
-                INSUFFICIENT VAULT LIQUIDITY
-              </p>
+              <p className="text-red-400 font-bold uppercase tracking-wider text-sm">INSUFFICIENT VAULT LIQUIDITY</p>
               <div className="mt-2 space-y-1 text-sm">
-                <p className="text-zinc-300">
-                  Required: <span className="text-red-400 font-bold">{formatCurrency(principal)}</span>
-                </p>
-                <p className="text-zinc-300">
-                  Available: <span className="text-emerald-400 font-bold">{formatCurrency(vaultCash || 0)}</span>
-                </p>
-                <p className="text-zinc-300">
-                  Deficit: <span className="text-red-400 font-bold">{formatCurrency(liquidityDeficit)}</span>
-                </p>
+                <p className="text-zinc-300">Required: <span className="text-red-400 font-bold">{formatCurrency(principal)}</span></p>
+                <p className="text-zinc-300">Available: <span className="text-emerald-400 font-bold">{formatCurrency(vaultCash || 0)}</span></p>
+                <p className="text-zinc-300">Deficit: <span className="text-red-400 font-bold">{formatCurrency(liquidityDeficit)}</span></p>
               </div>
-              <p className="text-zinc-500 text-xs mt-2">
-                Deposit additional capital to Treasury to enable disbursement.
-              </p>
+              <p className="text-zinc-500 text-xs mt-2">Deposit additional capital to Treasury to enable disbursement.</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Action Buttons - Hidden during print */}
       <div className="flex gap-3 pt-2 print:hidden">
         <button
           type="button"
