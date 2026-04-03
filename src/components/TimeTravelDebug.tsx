@@ -1,20 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function TimeTravelDebug() {
   const [isFastForwarding, setIsFastForwarding] = useState(false);
   const [isReversing, setIsReversing] = useState(false);
-  const router = useRouter();
 
   const handleFastForward = async () => {
     setIsFastForwarding(true);
     try {
-      await fetch('/api/debug/fast-forward', { method: 'POST' });
-      router.refresh(); 
+      const res = await fetch('/api/debug/fast-forward', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload(); 
+      } else {
+        alert("Fast-Forward Failed: " + data.error);
+      }
     } catch (e) {
-      console.error("Network error during time travel.");
+      alert("Network error during time travel.");
     }
     setIsFastForwarding(false);
   };
@@ -22,10 +25,15 @@ export default function TimeTravelDebug() {
   const handleReverse = async () => {
     setIsReversing(true);
     try {
-      await fetch('/api/debug/rewind', { method: 'POST' });
-      router.refresh(); 
+      const res = await fetch('/api/debug/rewind', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload(); 
+      } else {
+        alert("Reverse Failed: " + data.error);
+      }
     } catch (e) {
-      console.error("Network error during time reversal.");
+      alert("Network error during time reversal.");
     }
     setIsReversing(false);
   };
@@ -43,7 +51,9 @@ export default function TimeTravelDebug() {
         <button 
           onClick={handleFastForward}
           disabled={isFastForwarding || isReversing}
-          className="flex-1 bg-rose-900/30 hover:bg-rose-900/50 border border-rose-500/30 text-rose-400 font-bold py-3 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          className={`flex-1 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 ${
+            isFastForwarding ? "bg-rose-900/50 border border-rose-500/30 text-rose-400 opacity-50 cursor-not-allowed" : "bg-rose-900/30 hover:bg-rose-900/50 border border-rose-500/30 text-rose-400"
+          }`}
         >
           {isFastForwarding ? "⏩ FAST-FORWARDING..." : "⏩ FAST-FORWARD (7 Days)"}
         </button>
@@ -51,7 +61,9 @@ export default function TimeTravelDebug() {
         <button 
           onClick={handleReverse}
           disabled={isFastForwarding || isReversing}
-          className="flex-1 bg-emerald-900/30 hover:bg-emerald-900/50 border border-emerald-500/30 text-emerald-400 font-bold py-3 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          className={`flex-1 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 ${
+            isReversing ? "bg-emerald-900/50 border border-emerald-500/30 text-emerald-400 opacity-50 cursor-not-allowed" : "bg-emerald-900/30 hover:bg-emerald-900/50 border border-emerald-500/30 text-emerald-400"
+          }`}
         >
           {isReversing ? "⏪ REVERSING TIME..." : "⏪ REVERSE (Back to Normal)"}
         </button>
