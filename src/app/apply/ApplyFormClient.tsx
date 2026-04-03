@@ -69,13 +69,13 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
   const totalDue = principal + netInterest;
   const perPeriod = optimalDuration > 0 ? totalDue / optimalDuration : 0;
 
+  // 🚀 UPGRADED: ANTI-BLEEDING SCHEDULE ENGINE
   const generateSchedule = () => {
     if (!principal || principal <= 0 || !optimalDuration) return [];
     
     const schedule = [];
-    const principalPerPeriod = principal / optimalDuration;
-    const interestPerPeriod = netInterest / optimalDuration;
-    const totalPerPeriod = totalDue / optimalDuration;
+    let remainingPrincipalToDistribute = principal;
+    let remainingInterestToDistribute = netInterest;
     
     for (let i = 1; i <= optimalDuration; i++) {
       const date = new Date();
@@ -87,12 +87,36 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
         date.setMonth(date.getMonth() + i);
       }
       
+      const isLastPeriod = (i === optimalDuration);
+      let strictPrincipal = 0;
+      let strictInterest = 0;
+
+      if (isLastPeriod) {
+        strictPrincipal = Number(remainingPrincipalToDistribute.toFixed(2));
+        strictInterest = Number(remainingInterestToDistribute.toFixed(2));
+      } else {
+        strictPrincipal = Number((principal / optimalDuration).toFixed(2));
+        strictInterest = Number((netInterest / optimalDuration).toFixed(2));
+        
+        remainingPrincipalToDistribute -= strictPrincipal;
+        remainingInterestToDistribute -= strictInterest;
+      }
+
+      const strictTotalAmount = Number((strictPrincipal + strictInterest).toFixed(2));
+      
+      const remainingBalanceBeforeThisPayment = isLastPeriod 
+        ? strictTotalAmount 
+        : Number(((remainingPrincipalToDistribute + remainingInterestToDistribute) + strictTotalAmount).toFixed(2));
+      
+      const finalRemainingBalance = isLastPeriod ? 0 : Number((remainingBalanceBeforeThisPayment - strictTotalAmount).toFixed(2));
+
       schedule.push({
         period: i,
         dateStr: date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }),
-        principal: principalPerPeriod,
-        interest: interestPerPeriod,
-        total: totalPerPeriod
+        principal: strictPrincipal,
+        interest: strictInterest,
+        total: strictTotalAmount,
+        balance: finalRemainingBalance
       });
     }
     return schedule;
@@ -247,6 +271,25 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
             <div className="font-semibold">Monthly Bills:</div><div>₱{formData.monthlyBills || '—'}</div>
           </div>
 
+          {/* 🚀 UPGRADED: Amortization Schedule now prints on the receipt! */}
+          <h2 className="font-bold text-lg border-b border-black pb-2 mb-4 mt-6">AMORTIZATION SCHEDULE</h2>
+          <div className="border border-black mb-6">
+            <div className="bg-gray-100 p-2 text-xs font-bold text-black flex justify-between uppercase tracking-wider border-b border-black">
+              <span className="w-16">Period</span>
+              <span className="w-24">Due Date</span>
+              <span className="w-28 text-right">Payment</span>
+              <span className="w-28 text-right">Balance</span>
+            </div>
+            {amortizationSchedule.map((row) => (
+              <div key={row.period} className="p-2 border-b border-gray-300 flex justify-between text-sm text-black">
+                <span className="w-16">{row.period} {termType.slice(0, -1)}</span>
+                <span className="w-24 text-xs">{row.dateStr}</span>
+                <span className="w-28 text-right font-bold">₱{row.total.toFixed(2)}</span>
+                <span className="w-28 text-right">₱{row.balance.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+
           <h2 className="font-bold text-lg border-b border-black pb-2 mb-4">REFERENCE</h2>
           <div className="grid grid-cols-2 gap-y-2 text-sm mb-6 break-inside-avoid">
             <div className="font-semibold">Reference Name:</div><div>{formData.referenceName || '—'}</div>
@@ -274,7 +317,6 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
             <div className="bg-transparent text-black text-sm mb-6 whitespace-normal">
               <h3 className="font-bold text-black text-base mb-3 border-b border-black pb-2">MGA TUNTUNIN AT KUNDISYON (Terms and Conditions)</h3>
               <ol className="list-decimal pl-5 space-y-2 break-words">
-                {/* 🚀 RESTORED PRINT VERSION T&C */}
                 <li className="break-words text-black">
                   <strong>INTERES AT GOOD PAYER DISCOUNT:</strong> Ang opisyal na flat-rate interest ng utang na ito ay <strong>10%</strong>. PERO, kung ang NANGUTANG ay magbabayad ng tama sa oras sa lahat ng kanyang iskedul, siya ay bibigyan ng <strong>4% Good Payer Discount</strong> (kaya magiging 6% na lamang ang epektibong interes).
                   <br/>
@@ -417,6 +459,31 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
                 <span className="text-zinc-300 text-sm font-bold">Discounted {termType === 'Days' ? 'Daily' : termType === 'Weeks' ? 'Weekly' : 'Monthly'} Payment:</span>
                 <span className="text-emerald-400 font-mono font-bold text-lg">₱{perPeriod.toFixed(2)}</span>
               </div>
+              
+              {/* 🚀 UPGRADED: Dynamic Amortization Schedule Table */}
+              {amortizationSchedule.length > 0 && (
+                <div className="mt-4 border border-zinc-700 rounded-xl overflow-hidden">
+                  <div className="bg-zinc-800 p-2 flex justify-between items-center">
+                    <h4 className="font-bold text-white text-xs uppercase tracking-wider">📅 AMORTIZATION SCHEDULE</h4>
+                  </div>
+                  <div className="bg-zinc-900 p-2 text-[10px] font-bold text-zinc-400 flex justify-between uppercase tracking-wider border-b border-zinc-800">
+                    <span className="w-12">Period</span>
+                    <span className="w-20">Due Date</span>
+                    <span className="w-20 text-right">Payment</span>
+                    <span className="w-20 text-right">Balance</span>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto">
+                    {amortizationSchedule.map((row) => (
+                      <div key={row.period} className="p-2 border-b border-zinc-800/50 flex justify-between text-xs bg-black">
+                        <span className="w-12 text-zinc-400">{row.period} {termType.slice(0, -1)}</span>
+                        <span className="w-20 text-zinc-300 text-[10px] flex items-center">{row.dateStr}</span>
+                        <span className="w-20 text-right text-emerald-400 font-mono font-bold">₱{row.total.toFixed(2)}</span>
+                        <span className="w-20 text-right text-white font-mono">₱{row.balance.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -532,7 +599,6 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
             <h2 className="text-red-400 font-bold text-lg mb-3 uppercase tracking-wider">5. Legal Compliance & Consent</h2>
             <div className={`${borderStyle} p-4 space-y-4`}>
               
-              {/* 🚀 RESTORED SCREEN VERSION T&C */}
               <div className="bg-zinc-900 border border-zinc-700 rounded-md p-4 text-sm text-zinc-300 shadow-inner">
                 <h3 className="font-bold text-white text-base mb-3 border-b border-zinc-700 pb-2">MGA TUNTUNIN AT KUNDISYON (Terms and Conditions)</h3>
                 <ol className="list-decimal pl-5 space-y-2 break-words">
@@ -579,4 +645,3 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
     </div>
   );
 }
-
