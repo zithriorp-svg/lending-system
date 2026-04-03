@@ -15,15 +15,23 @@ async function getActivePortfolio() {
 }
 
 const formatMoney = (amount: number) => "₱" + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// 🚀 UPGRADED: Forces Vercel to convert UTC to Philippine Standard Time
 const formatDate = (date: any) => {
   if (!date) return "Unknown Date";
-  return new Date(date).toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(date).toLocaleString('en-US', { 
+    timeZone: 'Asia/Manila', 
+    month: 'short', 
+    day: '2-digit', 
+    year: 'numeric', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
 };
 
 export default async function TreasuryDashboard() {
   const portfolio = await getActivePortfolio();
 
-  // 1. Fetch the entire immutable ledger
   const ledgerEntries = await prisma.ledger.findMany({
     where: { portfolio },
     orderBy: { createdAt: 'desc' },
@@ -34,7 +42,6 @@ export default async function TreasuryDashboard() {
     }
   });
 
-  // 2. Engine: Trial Balance & Sankey Flow Data
   const accounts: Record<string, { debit: number; credit: number }> = {};
   let totalDebit = 0;
   let totalCredit = 0;
@@ -49,13 +56,11 @@ export default async function TreasuryDashboard() {
     capitalWithdrawn: 0,
   };
 
-  // TypeScript Armor
   ledgerEntries.forEach((entry: any) => {
     const amt = Number(entry.amount?.toString() || 0);
     const dr = String(entry.debitAccount || "Unknown");
     const cr = String(entry.creditAccount || "Unknown");
 
-    // Trial Balance Aggregation
     if (!accounts[dr]) accounts[dr] = { debit: 0, credit: 0 };
     if (!accounts[cr]) accounts[cr] = { debit: 0, credit: 0 };
     
@@ -64,7 +69,6 @@ export default async function TreasuryDashboard() {
     totalDebit += amt;
     totalCredit += amt;
 
-    // Sankey Flow Aggregation
     if (dr === "Vault Cash" && cr === "Loans Receivable") flow.principalRepaid += amt;
     if (dr === "Vault Cash" && cr === "Interest Income") flow.interestEarned += amt;
     if (dr === "Vault Cash" && (cr === "Fee Income" || cr === "Penalty Income")) flow.feesEarned += amt;
@@ -81,7 +85,6 @@ export default async function TreasuryDashboard() {
 
   return (
     <div className="min-h-screen bg-black text-zinc-300 pb-20 font-sans">
-      {/* HEADER */}
       <div className="bg-zinc-950 border-b border-zinc-800 p-4 sticky top-0 z-50 flex items-center gap-3">
         <Link href="/" className="p-2 bg-zinc-900 rounded-lg text-zinc-400 hover:text-white border border-zinc-800">
           <ArrowLeft className="w-5 h-5" />
@@ -96,7 +99,6 @@ export default async function TreasuryDashboard() {
 
       <div className="p-4 max-w-5xl mx-auto space-y-6">
 
-        {/* FUSION: THE CAPITAL INJECTION FORM */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl shadow-xl p-4 sm:p-6">
           <h2 className="text-xs font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2 mb-4">
             <Wallet className="w-4 h-4" /> Capital Control (Inject / Withdraw)
@@ -104,7 +106,6 @@ export default async function TreasuryDashboard() {
           <TreasuryForm />
         </div>
 
-        {/* SECTION 1: THE SANKEY PIPELINE */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 shadow-xl relative overflow-hidden">
           <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-6 flex items-center gap-2">
             <ArrowRightLeft className="w-4 h-4 text-blue-400" /> Cash Flow Pipeline
@@ -139,7 +140,6 @@ export default async function TreasuryDashboard() {
           </div>
         </div>
 
-        {/* SECTION 2: MASTER TRIAL BALANCE */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl shadow-xl overflow-hidden w-full">
           <div className="p-4 sm:p-6 border-b border-zinc-800 flex justify-between items-center bg-zinc-950">
             <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
@@ -147,7 +147,6 @@ export default async function TreasuryDashboard() {
             </h2>
             <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">BALANCED</span>
           </div>
-          {/* 🚀 UPGRADED: Added min-w-[500px] to force scrolling instead of squishing */}
           <div className="overflow-x-auto">
             <table className="w-full min-w-[500px] text-left border-collapse">
               <thead>
@@ -175,14 +174,12 @@ export default async function TreasuryDashboard() {
           </div>
         </div>
 
-        {/* SECTION 3: IMMUTABLE TRANSACTION LEDGER */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl shadow-xl overflow-hidden w-full">
           <div className="p-4 sm:p-6 border-b border-zinc-800 bg-zinc-950">
             <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-yellow-400" /> Immutable Ledger Records
             </h2>
           </div>
-          {/* 🚀 UPGRADED: Added min-w-[800px] to force horizontal scroll */}
           <div className="overflow-x-auto pb-2">
             <table className="w-full min-w-[800px] text-left border-collapse whitespace-nowrap">
               <thead>
