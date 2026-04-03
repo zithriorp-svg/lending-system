@@ -4,29 +4,30 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function TimeTravelDebug() {
-  const [loading, setLoading] = useState(false);
+  const [isFastForwarding, setIsFastForwarding] = useState(false);
+  const [isReversing, setIsReversing] = useState(false);
   const router = useRouter();
 
   const handleFastForward = async () => {
-    setLoading(true);
+    setIsFastForwarding(true);
     try {
       await fetch('/api/debug/fast-forward', { method: 'POST' });
       router.refresh(); 
     } catch (e) {
       console.error("Network error during time travel.");
     }
-    setLoading(false);
+    setIsFastForwarding(false);
   };
 
   const handleReverse = async () => {
-    setLoading(true);
+    setIsReversing(true);
     try {
       await fetch('/api/debug/rewind', { method: 'POST' });
       router.refresh(); 
     } catch (e) {
       console.error("Network error during time reversal.");
     }
-    setLoading(false);
+    setIsReversing(false);
   };
 
   return (
@@ -41,18 +42,18 @@ export default function TimeTravelDebug() {
       <div className="flex flex-col md:flex-row gap-4">
         <button 
           onClick={handleFastForward}
-          disabled={loading}
+          disabled={isFastForwarding || isReversing}
           className="flex-1 bg-rose-900/30 hover:bg-rose-900/50 border border-rose-500/30 text-rose-400 font-bold py-3 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {loading ? "..." : "⏩ FAST-FORWARD (7 Days)"}
+          {isFastForwarding ? "⏩ FAST-FORWARDING..." : "⏩ FAST-FORWARD (7 Days)"}
         </button>
 
         <button 
           onClick={handleReverse}
-          disabled={loading}
+          disabled={isFastForwarding || isReversing}
           className="flex-1 bg-emerald-900/30 hover:bg-emerald-900/50 border border-emerald-500/30 text-emerald-400 font-bold py-3 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {loading ? "..." : "⏪ REVERSE (Back to Normal)"}
+          {isReversing ? "⏪ REVERSING TIME..." : "⏪ REVERSE (Back to Normal)"}
         </button>
       </div>
       
