@@ -58,7 +58,6 @@ function DossierFBNotifyButton({ client, loan, inst }: { client: ClientData, loa
     let message = "";
     const isOverdue = new Date(inst.dueDate) < new Date() && inst.status !== 'PAID';
     
-    // Self-contained Receipt Generator
     if (inst.status === 'PAID') { 
       const amt = inst.amountPaid || inst.expectedAmount;
       const txnId = loan.id.toString().padStart(4, '0');
@@ -360,7 +359,8 @@ export default function ClientProfileClient({ client }: { client: ClientData }) 
                               <span className="text-zinc-400">Interest: <span className="text-amber-400">{formatCurrency(inst.interest)}</span></span>
                               {inst.penaltyFee > 0 && <span className="text-rose-400">Penalty: {formatCurrency(inst.penaltyFee)}</span>}
                             </div>
-                            {inst.status !== 'PAID' && <CollectionLog installmentId={inst.id} penaltyFee={inst.penaltyFee} status={inst.status} expectedAmount={inst.expectedAmount} principalAmount={loan.principal} />}
+                            {/* 🚀 FIXED: Added loanId={loan.id} to pass the wire through! */}
+                            {inst.status !== 'PAID' && <CollectionLog installmentId={inst.id} penaltyFee={inst.penaltyFee} status={inst.status} expectedAmount={inst.expectedAmount} principalAmount={loan.principal} loanId={loan.id} />}
                           </div>
                         ))}
                       </div>
