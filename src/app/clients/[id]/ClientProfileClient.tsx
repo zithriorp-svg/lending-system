@@ -58,7 +58,7 @@ function DossierFBNotifyButton({ client, loan, inst }: { client: ClientData, loa
     let message = "";
     const isOverdue = new Date(inst.dueDate) < new Date() && inst.status !== 'PAID';
     
-    // 🚀 UPGRADED: Self-contained Receipt Generator
+    // Self-contained Receipt Generator
     if (inst.status === 'PAID') { 
       const amt = inst.amountPaid || inst.expectedAmount;
       const txnId = loan.id.toString().padStart(4, '0');
