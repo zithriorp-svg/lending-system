@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DirectLoanCalculator from "@/components/DirectLoanCalculator";
 import CollectionLog from "@/components/CollectionLog";
-import { sendFBNotification, generateOverdueNotice, generatePaymentReminder, generatePaymentReceipt } from "@/utils/notifications";
+import { sendFBNotification, generateOverdueNotice, generatePaymentReminder } from "@/utils/notifications";
 import { sendChatMessage } from "./actions";
 
 const formatCurrency = (value: number | string | undefined | null): string => {
@@ -53,19 +53,30 @@ function RolloverButton({ loan, onComplete }: { loan: Loan, onComplete: () => vo
 
 function DossierFBNotifyButton({ client, loan, inst }: { client: ClientData, loan: Loan, inst: Installment }) {
   const [copied, setCopied] = useState(false);
+  
   const handleNotify = () => {
     let message = "";
     const isOverdue = new Date(inst.dueDate) < new Date() && inst.status !== 'PAID';
-    if (inst.status === 'PAID') { message = generatePaymentReceipt({ clientName: client.firstName, amount: inst.amountPaid || inst.expectedAmount, paymentDate: inst.paymentDate || new Date(), periodNumber: inst.period, loan: loan as any }); }
+    
+    // 🚀 UPGRADED: Self-contained Receipt Generator
+    if (inst.status === 'PAID') { 
+      const amt = inst.amountPaid || inst.expectedAmount;
+      const txnId = loan.id.toString().padStart(4, '0');
+      message = `🧾 PAYMENT RECEIPT\n\nHello ${client.firstName},\n\nWe have successfully received your payment of ${formatCurrency(amt)} for Installment #${inst.period} (TXN-${txnId}).\n\nThank you for paying on time and maintaining your good standing!\n\n- FinTech Vault`;
+    }
     else if (isOverdue) {
       const baseAmount = inst.expectedAmount; const discountAmount = baseAmount * 0.04; const totalAmount = baseAmount + discountAmount + (inst.penaltyFee || 0);
       const daysLate = Math.floor((new Date().getTime() - new Date(inst.dueDate).getTime()) / (1000 * 60 * 60 * 24));
       message = generateOverdueNotice({ clientName: client.firstName, periodNumber: inst.period, daysLate: daysLate > 0 ? daysLate : 1, baseAmount, discountAmount, penaltyAmount: inst.penaltyFee || 0, totalAmount, dueDate: inst.dueDate, loan: loan as any });
-    } else { message = generatePaymentReminder({ clientName: client.firstName, amount: inst.expectedAmount, periodNumber: inst.period, dueDate: inst.dueDate, loan: loan as any }); }
+    } else { 
+      message = generatePaymentReminder({ clientName: client.firstName, amount: inst.expectedAmount, periodNumber: inst.period, dueDate: inst.dueDate, loan: loan as any }); 
+    }
+    
     sendFBNotification({ message, clientName: `${client.firstName} ${client.lastName}`, fbProfileUrl: client.kycData?.fbProfileUrl, messengerId: client.kycData?.messengerId, onCopy: () => { setCopied(true); setTimeout(() => setCopied(false), 2000); } });
   };
+
   return (
-    <button onClick={handleNotify} className={`flex items-center gap-1 px-2 py-1 text-[10px] uppercase font-bold rounded transition-all whitespace-nowrap ${copied ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600/40'}`} title="Send Full-Force Ledger Update via FB">
+    <button onClick={handleNotify} className={`flex items-center gap-1 px-2 py-1 text-[10px] uppercase font-bold rounded transition-all whitespace-nowrap ${copied ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600/40'}`} title="Send Message via FB">
       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.092.301 2.246.464 3.443.464 6.627 0 12-4.974 12-11.111S18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.26L19.752 8l-6.561 6.963z"/></svg>
       {copied ? '✓ COPIED' : 'FB NOTIFY'}
     </button>
@@ -119,9 +130,6 @@ const DocumentImage = ({ src, label }: { src: string | null; label: string }) =>
   );
 };
 
-// ====================================================================================
-// 🚀 UPGRADED COMM-LINK WITH AI ASSIST INJECTION
-// ====================================================================================
 function CentralizedChat({ clientId, messages }: { clientId: number, messages: Message[] }) {
   const [chatInput, setChatInput] = useState(""); 
   const [isSending, setIsSending] = useState(false); 
@@ -146,16 +154,10 @@ function CentralizedChat({ clientId, messages }: { clientId: number, messages: M
         body: JSON.stringify({ clientId })
       });
       const data = await res.json();
-      if (data.reply) {
-        setChatInput(data.reply); // Populates the text box but DOES NOT auto-send.
-      } else {
-        alert(data.error || "Matrix Error: AI Drafting Failed.");
-      }
-    } catch (e) {
-      alert("Network Error during AI Sync.");
-    } finally {
-      setIsDrafting(false);
-    }
+      if (data.reply) { setChatInput(data.reply); } 
+      else { alert(data.error || "Matrix Error: AI Drafting Failed."); }
+    } catch (e) { alert("Network Error during AI Sync."); } 
+    finally { setIsDrafting(false); }
   };
 
   return (
@@ -186,12 +188,7 @@ function CentralizedChat({ clientId, messages }: { clientId: number, messages: M
           <button type="submit" disabled={isSending || isDrafting || !chatInput.trim()} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2 rounded-xl text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{isSending ? '...' : 'SEND'}</button>
         </form>
         <div className="flex justify-end pr-2">
-          <button 
-            type="button" 
-            onClick={handleAIDraft} 
-            disabled={isDrafting}
-            className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1 uppercase tracking-widest disabled:opacity-50"
-          >
+          <button type="button" onClick={handleAIDraft} disabled={isDrafting} className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1 uppercase tracking-widest disabled:opacity-50">
             {isDrafting ? "⏳ Syncing with Matrix..." : "✨ Auto-Draft Response via Copilot"}
           </button>
         </div>
