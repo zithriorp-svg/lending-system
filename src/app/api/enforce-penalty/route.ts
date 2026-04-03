@@ -26,54 +26,44 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Loan not found" }, { status: 404 });
     }
 
+    // 🚀 NEW SAFETY LOCK: We use the actual Loan flag, not a phantom table!
+    if (loan.goodPayerDiscountRevoked) {
+       return NextResponse.json({ success: false, error: "Penalty already applied. Discount is permanently revoked." }, { status: 400 });
+    }
+
     const installment = loan.installments.find(i => i.id === installmentId);
     if (!installment) {
       return NextResponse.json({ success: false, error: "Installment not found" }, { status: 404 });
     }
 
-    // 1. SAFETY LOCK: Prevent double-applying the exact same penalty
-    const existingLogs = await prisma.collectionLog.findMany({
-      where: {
-        installmentId: installmentId,
-        note: { contains: "DISCOUNT REVOKED: 4% Good Payer Discount" }
-      }
-    });
-
-    if (existingLogs.length > 0) {
-       return NextResponse.json({ success: false, error: "Penalty already applied to this installment." }, { status: 400 });
-    }
-
-    // 2. MATHEMATICAL PRECISION: Parse to exact float
+    // MATHEMATICAL PRECISION
     const currentPenalty = parseFloat(installment.penaltyFee?.toString() || "0");
     const penaltyAmountToAdd = 40.00; 
-    
-    // Calculate new total and enforce 2 decimal precision
     const newTotalPenalty = parseFloat((currentPenalty + penaltyAmountToAdd).toFixed(2));
 
+    // Update the installment
     await prisma.loanInstallment.update({
       where: { id: installmentId },
+      data: { penaltyFee: newTotalPenalty }
+    });
+
+    // Revoke the discount globally
+    await prisma.loan.update({
+      where: { id: loanId },
+      data: { goodPayerDiscountRevoked: true }
+    });
+
+    // 🚀 Use the real Audit Log table
+    await prisma.auditLog.create({
       data: {
-        penaltyFee: newTotalPenalty
+        type: 'PENALTY_APPLIED',
+        amount: penaltyAmountToAdd,
+        description: `Revoked 4% Good Payer Discount for TXN-${loanId}. Added ₱40.00 penalty to Period ${installment.period}.`,
+        portfolio
       }
     });
 
-    if (!loan.goodPayerDiscountRevoked) {
-      await prisma.loan.update({
-        where: { id: loanId },
-        data: { goodPayerDiscountRevoked: true }
-      });
-    }
-
-    await prisma.collectionLog.create({
-      data: {
-        installmentId,
-        type: 'NOTE',
-        note: `DISCOUNT REVOKED: 4% Good Payer Discount (₱40.00) forfeited. \nTotal penalties: ₱${newTotalPenalty.toFixed(2)}`,
-        loggedBy: 'System Auto',
-        clientViewable: true
-      }
-    });
-
+    // Send Comm-Link Message
     await prisma.message.create({
       data: {
         clientId: loan.clientId,
@@ -86,6 +76,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("Penalty enforcement error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: "System Error: " + error.message }, { status: 500 });
   }
 }
