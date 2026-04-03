@@ -14,7 +14,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
     }
 
-    // 1. Get the current state of the loan and the specific installment
     const loan = await prisma.loan.findUnique({
       where: { id: loanId },
       include: {
@@ -32,12 +31,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Installment not found" }, { status: 404 });
     }
 
-    // 2. SAFETY LOCK: Check if this specific installment already has a penalty applied today
-    // We check the collection logs to see if a penalty was already logged for this exact installment
+    // 1. SAFETY LOCK: Prevent double-applying the exact same penalty
     const existingLogs = await prisma.collectionLog.findMany({
       where: {
         installmentId: installmentId,
-        note: { contains: "DISCOUNT REVOKED: 4% Good Payer Discount (₱40) forfeited." }
+        note: { contains: "DISCOUNT REVOKED: 4% Good Payer Discount" }
       }
     });
 
@@ -45,14 +43,13 @@ export async function POST(req: Request) {
        return NextResponse.json({ success: false, error: "Penalty already applied to this installment." }, { status: 400 });
     }
 
-    // 3. MATHEMATICAL RECALIBRATION: Force everything to strict numbers
-    const currentPenalty = Number(installment.penaltyFee?.toString() || 0);
-    const penaltyAmountToAdd = 40; 
+    // 2. MATHEMATICAL PRECISION: Parse to exact float
+    const currentPenalty = parseFloat(installment.penaltyFee?.toString() || "0");
+    const penaltyAmountToAdd = 40.00; 
     
-    // Strict Addition (Prevents string concatenation like 404040)
-    const newTotalPenalty = currentPenalty + penaltyAmountToAdd; 
+    // Calculate new total and enforce 2 decimal precision
+    const newTotalPenalty = parseFloat((currentPenalty + penaltyAmountToAdd).toFixed(2));
 
-    // 4. Update the specific installment with the new math
     await prisma.loanInstallment.update({
       where: { id: installmentId },
       data: {
@@ -60,7 +57,6 @@ export async function POST(req: Request) {
       }
     });
 
-    // 5. Revoke the 4% discount globally for the loan
     if (!loan.goodPayerDiscountRevoked) {
       await prisma.loan.update({
         where: { id: loanId },
@@ -68,18 +64,16 @@ export async function POST(req: Request) {
       });
     }
 
-    // 6. Log the action in the Collection Log exactly ONCE
     await prisma.collectionLog.create({
       data: {
         installmentId,
         type: 'NOTE',
-        note: `DISCOUNT REVOKED: 4% Good Payer Discount (₱40) forfeited. \nTotal penalties: ₱${newTotalPenalty}`,
+        note: `DISCOUNT REVOKED: 4% Good Payer Discount (₱40.00) forfeited. \nTotal penalties: ₱${newTotalPenalty.toFixed(2)}`,
         loggedBy: 'System Auto',
         clientViewable: true
       }
     });
 
-    // 7. Drop a polite notification in the Comm-Link
     await prisma.message.create({
       data: {
         clientId: loan.clientId,
