@@ -26,8 +26,6 @@ export async function POST() {
         data: { goodPayerDiscountRevoked: false }
       });
 
-      // 💥 THE PHANTOM VAPORIZER HAS BEEN REMOVED! THE ENGINE WILL NO LONGER CRASH!
-
       const startDate = new Date(loan.startDate);
       const termType = loan.termType || "Months";
 
@@ -52,7 +50,11 @@ export async function POST() {
 
         await prisma.loanInstallment.update({
           where: { id: inst.id },
-          data: { dueDate: originalDueDate, status: newStatus, penaltyFee: 0 }
+          data: { 
+            dueDate: originalDueDate, 
+            status: newStatus, 
+            penaltyFee: 0 
+          }
         });
 
         updatedCount++;
@@ -69,16 +71,14 @@ export async function POST() {
 
     revalidatePath("/");
     revalidatePath("/payments");
-    revalidatePath("/agent-portal");
-    revalidatePath("/clients/[id]", "page");
 
     return NextResponse.json({
       success: true,
       message: `God-Mode Reverse Complete! Cleansed ${updatedCount} installments.`,
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("God-Mode Reverse error:", error);
-    return NextResponse.json({ success: false, error: "Failed to reverse time and cleanse state." }, { status: 500 });
+    return NextResponse.json({ success: false, error: String(error.message || error) }, { status: 500 });
   }
 }
