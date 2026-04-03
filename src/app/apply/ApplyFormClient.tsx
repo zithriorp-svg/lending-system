@@ -288,8 +288,10 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
             ))}
           </div>
 
-          <h2 className="font-bold text-lg border-b border-black pb-2 mb-4">REFERENCE</h2>
+          <h2 className="font-bold text-lg border-b border-black pb-2 mb-4">SOCIAL & REFERENCE</h2>
           <div className="grid grid-cols-2 gap-y-2 text-sm mb-6 break-inside-avoid">
+            <div className="font-semibold">Facebook Profile:</div><div className="break-all">{formData.fbProfileUrl || '—'}</div>
+            <div className="font-semibold">Google Maps:</div><div className="break-all">{formData.locationUrl || '—'}</div>
             <div className="font-semibold">Reference Name:</div><div>{formData.referenceName || '—'}</div>
             <div className="font-semibold">Reference Phone:</div><div>{formData.referencePhone || '—'}</div>
           </div>
@@ -493,6 +495,13 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
               <input name="age" readOnly placeholder="Age" value={formData.age ? `Age: ${formData.age}` : ""} className={`${rapidInputStyle} text-[#00df82]`} />
               <input name="phone" required placeholder="Phone Number" className={`${rapidInputStyle} col-span-2`} onChange={e => setFormData({...formData, phone: e.target.value})} />
               <input name="address" required placeholder="Current Address" className={`${rapidInputStyle} col-span-2 border-b-0`} onChange={e => setFormData({...formData, address: e.target.value})} />
+              
+              {/* 🚀 RESTORED: Social Recon & Emergency References */}
+              <div className="col-span-2 p-3 bg-[#1c1c21] text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-[#2a2a35]">Social Recon & Emergency Reference</div>
+              <input name="fbProfileUrl" required placeholder="Facebook Profile Link (https://www.facebook.com/share/...)" className={`${rapidInputStyle} col-span-2 text-blue-400`} onChange={e => setFormData({...formData, fbProfileUrl: e.target.value})} />
+              <input name="locationUrl" required placeholder="Google Maps Link (https://maps.app.goo.gl/...)" className={`${rapidInputStyle} col-span-2 text-emerald-400`} onChange={e => setFormData({...formData, locationUrl: e.target.value})} />
+              <input name="referenceName" required placeholder="Reference Name" className={`${rapidInputStyle} border-r border-b-0`} onChange={e => setFormData({...formData, referenceName: e.target.value})} />
+              <input name="referencePhone" required placeholder="Reference Phone Number" className={`${rapidInputStyle} border-b-0`} onChange={e => setFormData({...formData, referencePhone: e.target.value})} />
             </div>
           </div>
 
@@ -642,4 +651,3 @@ export default function ApplyFormClient({ agents, portfolios }: ApplyFormClientP
     </div>
   );
 }
-
