@@ -26,11 +26,12 @@ export async function POST() {
         data: { goodPayerDiscountRevoked: false }
       });
 
+      // 💥 THE PHANTOM VAPORIZER HAS BEEN REMOVED! THE ENGINE WILL NO LONGER CRASH!
+
       const startDate = new Date(loan.startDate);
       const termType = loan.termType || "Months";
 
       for (const inst of loan.installments) {
-        // 🚀 UPGRADE: We now wipe penalties for EVERY installment to fix the 404040 bug!
         const periodNumber = inst.period;
         let originalDueDate = new Date(startDate);
 
@@ -47,7 +48,6 @@ export async function POST() {
             break;
         }
 
-        // Keep PAID/PARTIAL status if already paid, but reset LATE back to PENDING
         const newStatus = inst.status === "PAID" ? "PAID" : (inst.status === "PARTIAL" ? "PARTIAL" : "PENDING");
 
         await prisma.loanInstallment.update({
