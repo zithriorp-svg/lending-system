@@ -45,13 +45,23 @@ export async function GET() {
       select: { amount: true, principalPortion: true, interestPortion: true, paymentDate: true }
     });
 
-    // Get expenses in last 30 days
+    // Get manual expenses in last 30 days
     const expenses = await prisma.expense.findMany({
       where: {
         portfolio,
         date: { gte: thirtyDaysAgo }
       },
       select: { amount: true, date: true }
+    });
+
+    // 🚀 UPGRADED: Get Agent Commissions from Ledger in last 30 days
+    const commissions = await prisma.ledger.findMany({
+      where: {
+        portfolio,
+        debitAccount: "Commission Expense",
+        createdAt: { gte: thirtyDaysAgo }
+      },
+      select: { amount: true, createdAt: true }
     });
 
     // Build daily liquidity data
@@ -63,8 +73,11 @@ export async function GET() {
     const allLoans = await prisma.loan.findMany({ where: { portfolio } });
     const allPayments = await prisma.payment.findMany({ where: { loanId: { in: loanIds } } });
     const allExpenses = await prisma.expense.findMany({ where: { portfolio } });
+    const allCommissions = await prisma.ledger.findMany({ 
+      where: { portfolio, debitAccount: "Commission Expense" } 
+    });
 
-    // Initial vault = deposits - withdrawals - disbursements + collections - expenses
+    // Initial vault = deposits - withdrawals - disbursements + collections - manual expenses - commissions
     allCapitalTx.forEach(tx => {
       if (new Date(tx.date) < thirtyDaysAgo) {
         runningBalance += tx.type === "DEPOSIT" ? Number(tx.amount) : -Number(tx.amount);
@@ -86,6 +99,12 @@ export async function GET() {
     allExpenses.forEach(exp => {
       if (new Date(exp.date) < thirtyDaysAgo) {
         runningBalance -= Number(exp.amount);
+      }
+    });
+
+    allCommissions.forEach(comm => {
+      if (new Date(comm.createdAt) < thirtyDaysAgo) {
+        runningBalance -= Number(comm.amount);
       }
     });
 
@@ -130,11 +149,19 @@ export async function GET() {
         }
       });
 
-      // Expenses (outflow)
+      // Manual Expenses (outflow)
       expenses.forEach(exp => {
         const expDate = new Date(exp.date).toISOString().split('T')[0];
         if (expDate === dateStr) {
           dayOutflows += Number(exp.amount);
+        }
+      });
+
+      // Agent Commissions (outflow)
+      commissions.forEach(comm => {
+        const commDate = new Date(comm.createdAt).toISOString().split('T')[0];
+        if (commDate === dateStr) {
+          dayOutflows += Number(comm.amount);
         }
       });
 
@@ -163,7 +190,11 @@ export async function GET() {
     const totalPrincipalCollected = allPayments.reduce((sum, p) => sum + Number(p.principalPortion), 0);
     const totalInterestCollected = allPayments.reduce((sum, p) => sum + Number(p.interestPortion), 0);
 
-    const totalExpenseAmount = allExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+    const manualExpenseAmount = allExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+    const commissionExpenseAmount = allCommissions.reduce((sum, comm) => sum + Number(comm.amount), 0);
+    
+    // 🚀 UPGRADED: Total Expenses now mathematically includes Agent Commissions
+    const totalExpenseAmount = manualExpenseAmount + commissionExpenseAmount;
 
     const currentVaultCash = totalDeposits - totalWithdrawals - totalDisbursed + totalCollected - totalExpenseAmount;
     const outstandingPrincipal = totalDisbursed - totalPrincipalCollected;
@@ -389,7 +420,6 @@ export async function GET() {
         totalClients,
         avgLoanSize
       },
-      // O1A: Enterprise KPIs
       enterpriseKPIs: {
         capitalUtilizationRatio,
         costToIncomeRatio,
@@ -397,7 +427,6 @@ export async function GET() {
         activeDisbursedPrincipal,
         loansAtRiskCount: loansWithLateInstallments.length
       },
-      // RCI: Revenue & Collections Intelligence
       rciMetrics: {
         netInterestMargin,
         atRiskCapital,
