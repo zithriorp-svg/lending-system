@@ -16,7 +16,6 @@ async function getActivePortfolio() {
 
 const formatMoney = (amount: number) => "₱" + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// 🚀 UPGRADED: Forces Vercel to convert UTC to Philippine Standard Time
 const formatDate = (date: any) => {
   if (!date) return "Unknown Date";
   return new Date(date).toLocaleString('en-US', { 
@@ -156,7 +155,7 @@ export default async function TreasuryDashboard() {
                   <th className="p-4 border-b border-zinc-800 text-right">Credit (Cr)</th>
                 </tr>
               </thead>
-              <tbody className="text-xs font-mono">
+              <tbody className="text-xs">
                 {Object.entries(accounts).map(([accountName, balances]) => (
                   <tr key={accountName} className="border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors">
                     <td className="p-4 font-bold text-zinc-300">{accountName}</td>
@@ -216,7 +215,7 @@ export default async function TreasuryDashboard() {
                       </td>
                       <td className="p-4 font-mono text-emerald-400/80">{dr}</td>
                       <td className="p-4 font-mono text-rose-400/80">{cr}</td>
-                      <td className="p-4 text-right font-mono font-bold text-white">{formatMoney(amt)}</td>
+                      <td className="p-4 text-right font-bold text-white">{formatMoney(amt)}</td>
                     </tr>
                   );
                 })}
@@ -252,7 +251,7 @@ function FlowCard({ label, amount, color, align = "left" }: { label: string, amo
       {align === "right" && <ArrowRight className="w-4 h-4 opacity-50 flex-shrink-0" />}
       <div className={`flex-1 ${align === "right" ? "text-right" : "text-left"}`}>
         <div className="text-[10px] uppercase tracking-widest opacity-70 font-bold">{label}</div>
-        <div className="text-sm font-black font-mono mt-0.5">{formatMoney(amount)}</div>
+        <div className="text-sm font-black mt-0.5">{formatMoney(amount)}</div>
       </div>
       {align === "left" && <ArrowRight className="w-4 h-4 opacity-50 flex-shrink-0" />}
     </div>
